@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://unpkg.com">
+    <title>3D Rubik's Cube</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1a1a1a; font-family: sans-serif; }
+        canvas { display: block; touch-action: none; }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px black;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            pointer-events: none;
+        }
+        #controls button {
+            pointer-events: auto;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #ccc;
+            padding: 6px 16px;
+            margin: 0 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        #controls button:hover {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Drag on the cube to rotate slices. Drag background to rotate view.</div>
+    <div id="controls">
+        <button id="btnScramble">Scramble</button>
+        <span>Shortcut: <b>Shift + G</b> to reset orientation (White Up)</span>
+    </div>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+            }
+        }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+
+        // Constants
+        const COLORS = {
+            front: 0x009b48,
+            back: 0x0046ad,
+            up: 0xffffff,
+            down: 0xffd500,
+            left: 0xff5800,
+            right: 0xb71234,
+            inside: 0x000000
+        };
+
+        const SIZE = 1.05;
+        const GAP = 0.05;
+        const OFFSET = SIZE + GAP;
+        const ROTATION_DURATION = 200;
+        const RESET_DURATION = 500;
+        const DRAG_THRESHOLD = 20;
+        const ROTATE_SENSITIVITY = 0.005;
+        const SCRAMBLE_MOVES = 20;
+
+        // Scene Setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(6, 6, 12);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
+        scene.add(ambientLight);
+
+        // Three-point lighting for depth
+        const keyLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        keyLight.position.set(5, 10, 7);
+        scene.add(keyLight);
+
+        const fillLight = new THREE.DirectionalLight(0xccccff, 0.3);
+        fillLight.position.set(-4, 2, 5);
+        scene.add(fillLight);
+
+        const rimLight = new THREE.DirectionalLight(0xffffff, 0.15);
+        rimLight.position.set(-2, -1, -8);
+        scene.add(rimLight);
+
+        // Cube State
+        const cubies = [];
+        const cubeGroup = new THREE.Group();
+        scene.add(cubeGroup);
+        let needsRender = true;
+
+        function createCubie(x, y, z) {
+            const materials = [
+                new THREE.MeshStandardMaterial({ color: x === 1 ? COLORS.right : COLORS.inside, roughness: 0.25, metalness: 0.0 }),
+                new THREE.MeshStandardMaterial({ color: x === -1 ? COLORS.left : COLORS.inside, roughness: 0.25, metalness: 0.0 }),
+                new THREE.MeshStandardMaterial({ color: y === 1 ? COLORS.up : COLORS.inside, roughness: 0.25, metalness: 0.0 }),
+                new THREE.MeshStandardMaterial({ color: y === -1 ? COLORS.down : COLORS.inside, roughness: 0.25, metalness: 0.0 }),
+                new THREE.MeshStandardMaterial({ color: z === 1 ? COLORS.front : COLORS.inside, roughness: 0.25, metalness: 0.0 }),
+                new THREE.MeshStandardMaterial({ color: z === -1 ? COLORS.back : COLORS.inside, roughness: 0.25, metalness: 0.0 })
+            ];
+
+            const geometry = new THREE.BoxGeometry(SIZE, SIZE, SIZE);
+            const cubie = new THREE.Mesh(geometry, materials);
+            cubie.position.set(x * OFFSET, y * OFFSET, z * OFFSET);
+
+            cubeGroup.add(cubie);
+            cubies.push(cubie);
+        }
+
+        for (let x = -1; x <= 1; x++) {
+            for (let y = -1; y <= 1; y++) {
+                for (let z = -1; z <= 1; z++) {
+                    createCubie(x, y, z);
+                }
+            }
+        }
+
+        // === EFFECTS: Particle System ===
+        const PARTICLE_COUNT = 200;
+        const particlePositions = new Float32Array(PARTICLE_COUNT * 3);
+        const particleAlphas = new Float32Array(PARTICLE_COUNT);
+        const particleSizes = new Float32Array(PARTICLE_COUNT);
+        const particleVelocities = [];
+        const particleLifetimes = [];
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            particleAlphas[i] = 0;
+            particleSizes[i] = 0;
+            particleVelocities.push(new THREE.Vector3());
+            particleLifetimes.push(0);
+        }
+
+        const particleGeometry = new THREE.BufferGeometry();
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        particleGeometry.setAttribute('alpha', new THREE.BufferAttribute(particleAlphas, 1));
+        particleGeometry.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
+
+        const particleMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                uColor: { value: new THREE.Color(0x00ffff) }
+            },
+            vertexShader: `
+                attribute float alpha;
+                attribute float size;
+                varying float vAlpha;
+                void main() {
+                    vAlpha = alpha;
+                    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                    gl_PointSize = size * (300.0 / -mvPosition.z);
+                    gl_Position = projectionMatrix * mvPosition;
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 uColor;
+                varying float vAlpha;
+                void main() {
+                    float d = length(gl_PointCoord - vec2(0.5));
+                    if (d > 0.5) discard;
+                    float glow = 1.0 - smoothstep(0.0, 0.5, d);
+                    gl_FragColor = vec4(uColor, vAlpha * glow);
+                }
+            `,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(particleSystem);
+
+        let particleEmitIndex = 0;
+        function emitParticles(center, axis, count, color) {
+            particleMaterial.uniforms.uColor.value.set(color);
+            for (let i = 0; i < count; i++) {
+                const idx = particleEmitIndex % PARTICLE_COUNT;
+                particleEmitIndex++;
+
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 0.3 + Math.random() * 1.5;
+                const spread = (Math.random() - 0.5) * 0.8;
+
+                const pos = center.clone();
+                if (axis === 'x') {
+                    pos.y += Math.cos(angle) * radius;
+                    pos.z += Math.sin(angle) * radius;
+                    pos.x += spread;
+                } else if (axis === 'y') {
+                    pos.x += Math.cos(angle) * radius;
+                    pos.z += Math.sin(angle) * radius;
+                    pos.y += spread;
+                } else {
+                    pos.x += Math.cos(angle) * radius;
+                    pos.y += Math.sin(angle) * radius;
+                    pos.z += spread;
+                }
+
+                particlePositions[idx * 3] = pos.x;
+                particlePositions[idx * 3 + 1] = pos.y;
+                particlePositions[idx * 3 + 2] = pos.z;
+
+                const vel = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.04,
+                    (Math.random() - 0.5) * 0.04,
+                    (Math.random() - 0.5) * 0.04
+                );
+                particleVelocities[idx].copy(vel);
+                particleLifetimes[idx] = 0.6 + Math.random() * 0.4;
+                particleAlphas[idx] = 1.0;
+                particleSizes[idx] = 0.15 + Math.random() * 0.2;
+            }
+            particleGeometry.attributes.position.needsUpdate = true;
+            particleGeometry.attributes.alpha.needsUpdate = true;
+            particleGeometry.attributes.size.needsUpdate = true;
+        }
+
+        function updateParticles(dt) {
+            let anyActive = false;
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                if (particleAlphas[i] > 0) {
+                    particleLifetimes[i] -= dt;
+                    if (particleLifetimes[i] <= 0) {
+                        particleAlphas[i] = 0;
+                        particleSizes[i] = 0;
+                    } else {
+                        particlePositions[i * 3] += particleVelocities[i].x;
+                        particlePositions[i * 3 + 1] += particleVelocities[i].y;
+                        particlePositions[i * 3 + 2] += particleVelocities[i].z;
+                        particleVelocities[i].multiplyScalar(0.97);
+                        particleAlphas[i] = Math.min(1, particleLifetimes[i] * 2);
+                        anyActive = true;
+                    }
+                }
+            }
+            if (anyActive) {
+                particleGeometry.attributes.position.needsUpdate = true;
+                particleGeometry.attributes.alpha.needsUpdate = true;
+                particleGeometry.attributes.size.needsUpdate = true;
+            }
+        }
+
+        // === EFFECTS: Dynamic Light & Emissive ===
+        let rotationLight = null;
+        let effectCubies = [];
+        let effectOriginalEmissive = [];
+        const EFFECT_COLORS = {
+            x: 0xff4466,
+            y: 0x44ff88,
+            z: 0x4488ff
+        };
+
+        function startEffects(axis, coord) {
+            // Dynamic point light
+            const lightColor = EFFECT_COLORS[axis] || 0xffffff;
+            rotationLight = new THREE.PointLight(lightColor, 3, 8);
+            const lightPos = new THREE.Vector3();
+            lightPos[axis] = coord;
+            rotationLight.position.copy(lightPos);
+            cubeGroup.add(rotationLight);
+
+            // Emissive glow on rotating cubies
+            effectCubies = cubies.filter(c => Math.abs(c.position[axis] - coord) < 0.1);
+            effectOriginalEmissive = [];
+            effectCubies.forEach(c => {
+                const originals = [];
+                c.material.forEach((mat, i) => {
+                    originals.push({
+                        emissive: mat.emissive.clone(),
+                        emissiveIntensity: mat.emissiveIntensity
+                    });
+                    if (mat.color.getHex() !== COLORS.inside) {
+                        mat.emissive.set(lightColor);
+                        mat.emissiveIntensity = 0.4;
+                    }
+                });
+                effectOriginalEmissive.push(originals);
+            });
+        }
+
+        function updateEffects(t, axis) {
+            // Pulse light intensity
+            if (rotationLight) {
+                rotationLight.intensity = 2 + Math.sin(t * Math.PI * 4) * 1.5;
+            }
+            // Pulse emissive
+            const pulse = 0.3 + Math.sin(t * Math.PI * 6) * 0.2;
+            effectCubies.forEach((c, ci) => {
+                c.material.forEach((mat, mi) => {
+                    if (mat.color.getHex() !== COLORS.inside) {
+                        mat.emissiveIntensity = pulse;
+                    }
+                });
+            });
+        }
+
+        function endEffects() {
+            // Remove light
+            if (rotationLight) {
+                cubeGroup.remove(rotationLight);
+                rotationLight.dispose();
+                rotationLight = null;
+            }
+            // Restore emissive
+            effectCubies.forEach((c, ci) => {
+                c.material.forEach((mat, mi) => {
+                    if (effectOriginalEmissive[ci] && effectOriginalEmissive[ci][mi]) {
+                        mat.emissive.copy(effectOriginalEmissive[ci][mi].emissive);
+                        mat.emissiveIntensity = effectOriginalEmissive[ci][mi].emissiveIntensity;
+                    }
+                });
+            });
+            effectCubies = [];
+            effectOriginalEmissive = [];
+        }
+
+        // === EFFECTS: Background Pulse ===
+        const BG_BASE = new THREE.Color(0x1a1a1a);
+        const BG_BRIGHT = new THREE.Color(0x252530);
+        let bgPulseActive = false;
+        scene.background = BG_BASE.clone();
+
+        // Interaction
+        let isDragging = false;
+        let dragTarget = null;
+        let dragNormal = null;
+        let mouseStart = new THREE.Vector2();
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        let isRotatingBackground = false;
+        let lastMousePos = { x: 0, y: 0 };
+
+        let animationQueue = [];
+        let isAnimating = false;
+        let isResettingOrientation = false;
+
+        function getPointerPos(event) {
+            return event.touches ? event.touches[0] : event;
+        }
+
+        function onPointerDown(event) {
+            if (isResettingOrientation) return;
+            const pos = getPointerPos(event);
+            mouse.x = (pos.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(pos.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(cubies);
+
+            if (intersects.length > 0) {
+                isDragging = true;
+                dragTarget = intersects[0].object;
+                dragNormal = intersects[0].face.normal.clone().applyQuaternion(dragTarget.quaternion);
+                mouseStart.set(pos.clientX, pos.clientY);
+            } else {
+                isRotatingBackground = true;
+                lastMousePos = { x: pos.clientX, y: pos.clientY };
+            }
+        }
+
+        function onPointerMove(event) {
+            const pos = getPointerPos(event);
+            if (isRotatingBackground) {
+                const deltaX = pos.clientX - lastMousePos.x;
+                const deltaY = pos.clientY - lastMousePos.y;
+
+                const qX = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), deltaX * ROTATE_SENSITIVITY);
+                const qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), deltaY * ROTATE_SENSITIVITY);
+
+                cubeGroup.quaternion.premultiply(qX).premultiply(qY).normalize();
+                needsRender = true;
+
+                lastMousePos = { x: pos.clientX, y: pos.clientY };
+            } else if (isDragging && !isAnimating) {
+                const deltaX = pos.clientX - mouseStart.x;
+                const deltaY = pos.clientY - mouseStart.y;
+                const dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+                if (dist > DRAG_THRESHOLD) {
+                    const moveDir = new THREE.Vector2(deltaX, deltaY).normalize();
+                    handleSliceRotation(moveDir);
+                    isDragging = false;
+                }
+            }
+        }
+
+        function onPointerUp() {
+            isDragging = false;
+            isRotatingBackground = false;
+            dragTarget = null;
+        }
+
+        function handleSliceRotation(moveDir) {
+            const cameraRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+
+            const dragDirWorld = new THREE.Vector3()
+                .addScaledVector(cameraRight, moveDir.x)
+                .addScaledVector(cameraUp, -moveDir.y)
+                .normalize();
+
+            const worldNormal = dragNormal.clone().applyQuaternion(cubeGroup.quaternion);
+            const rotationAxisWorld = new THREE.Vector3().crossVectors(worldNormal, dragDirWorld).normalize();
+            const rotationAxisLocal = rotationAxisWorld.clone().applyQuaternion(cubeGroup.quaternion.clone().invert());
+
+            const axes = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
+            let bestAxisIdx = 0;
+            let maxDot = -1;
+
+            axes.forEach((axis, idx) => {
+                const dot = Math.abs(rotationAxisLocal.dot(axis));
+                if (dot > maxDot) {
+                    maxDot = dot;
+                    bestAxisIdx = idx;
+                }
+            });
+
+            const axisName = ['x', 'y', 'z'][bestAxisIdx];
+            const direction = Math.sign(rotationAxisLocal.dot(axes[bestAxisIdx]));
+            const coord = Math.round(dragTarget.position[axisName] / OFFSET) * OFFSET;
+
+            queueRotation(axisName, coord, direction * (Math.PI / 2));
+        }
+
+        function queueRotation(axis, coord, angle) {
+            animationQueue.push({ axis, coord, angle });
+            processQueue();
+        }
+
+        function processQueue() {
+            if (isAnimating || animationQueue.length === 0) return;
+
+            isAnimating = true;
+            const move = animationQueue.shift();
+            const movingCubies = cubies.filter(c => Math.abs(c.position[move.axis] - move.coord) < 0.1);
+
+            // Start effects
+            startEffects(move.axis, move.coord);
+            bgPulseActive = true;
+
+            const pivot = new THREE.Group();
+            cubeGroup.add(pivot);
+            movingCubies.forEach(c => pivot.add(c));
+
+            const startQuaternion = pivot.quaternion.clone();
+            const rotationAxis = new THREE.Vector3();
+            rotationAxis[move.axis] = 1;
+            const endQuaternion = new THREE.Quaternion().setFromAxisAngle(rotationAxis, move.angle).multiply(startQuaternion);
+
+            let startTime = null;
+            let lastParticleTime = 0;
+
+            function animate(time) {
+                if (!startTime) startTime = time;
+                const elapsed = time - startTime;
+                const t = Math.min(elapsed / ROTATION_DURATION, 1);
+
+                pivot.quaternion.slerpQuaternions(startQuaternion, endQuaternion, t);
+
+                // Update effects
+                updateEffects(t, move.axis);
+
+                // Emit particles periodically
+                if (time - lastParticleTime > 16) {
+                    const center = new THREE.Vector3();
+                    center[move.axis] = move.coord;
+                    emitParticles(center, move.axis, 3, EFFECT_COLORS[move.axis]);
+                    lastParticleTime = time;
+                }
+
+                // Background pulse
+                const bgT = 0.5 + Math.sin(t * Math.PI) * 0.5;
+                scene.background = BG_BASE.clone().lerp(BG_BRIGHT, bgT * 0.3);
+
+                needsRender = true;
+
+                if (t < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    const tempCubies = [...pivot.children];
+                    tempCubies.forEach(c => {
+                        cubeGroup.attach(c);
+                        c.position.x = Math.round(c.position.x / OFFSET) * OFFSET;
+                        c.position.y = Math.round(c.position.y / OFFSET) * OFFSET;
+                        c.position.z = Math.round(c.position.z / OFFSET) * OFFSET;
+
+                        c.quaternion.set(
+                            Math.round(c.quaternion.x * 2) / 2,
+                            Math.round(c.quaternion.y * 2) / 2,
+                            Math.round(c.quaternion.z * 2) / 2,
+                            Math.round(c.quaternion.w * 2) / 2
+                        ).normalize();
+                    });
+                    cubeGroup.remove(pivot);
+
+                    // End effects
+                    endEffects();
+                    bgPulseActive = false;
+                    scene.background = BG_BASE.clone();
+
+                    isAnimating = false;
+                    processQueue();
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        function resetOrientation() {
+            if (isResettingOrientation) return;
+            isResettingOrientation = true;
+
+            // Animate cubeGroup back to identity so white faces world-up (Y+) and green faces world-forward (Z+)
+            const startQuaternion = cubeGroup.quaternion.clone();
+            const targetQuaternion = new THREE.Quaternion();
+            let startTime = null;
+
+            function animate(time) {
+                if (!startTime) startTime = time;
+                const elapsed = time - startTime;
+                const t = Math.min(elapsed / RESET_DURATION, 1);
+
+                const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                cubeGroup.quaternion.slerpQuaternions(startQuaternion, targetQuaternion, easeT);
+                needsRender = true;
+
+                if (t < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    isResettingOrientation = false;
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        function scramble() {
+            const axes = ['x', 'y', 'z'];
+            const coords = [-OFFSET, 0, OFFSET];
+            const angles = [Math.PI / 2, -Math.PI / 2];
+            for (let i = 0; i < SCRAMBLE_MOVES; i++) {
+                const axis = axes[Math.floor(Math.random() * 3)];
+                const coord = coords[Math.floor(Math.random() * 3)];
+                const angle = angles[Math.floor(Math.random() * 2)];
+                queueRotation(axis, coord, angle);
+            }
+        }
+
+        // Mouse events
+        window.addEventListener('mousedown', onPointerDown);
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('mouseup', onPointerUp);
+
+        // Touch events
+        window.addEventListener('touchstart', onPointerDown, { passive: true });
+        window.addEventListener('touchmove', onPointerMove, { passive: true });
+        window.addEventListener('touchend', onPointerUp);
+
+        // Keyboard shortcut
+        window.addEventListener('keydown', (event) => {
+            if (event.shiftKey && (event.key === 'G' || event.key === 'g')) {
+                resetOrientation();
+            }
+        });
+
+        // Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            needsRender = true;
+        });
+
+        // Pause on tab hidden
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                isRotatingBackground = false;
+                isDragging = false;
+            }
+            needsRender = true;
+        });
+
+        // Scramble button
+        document.getElementById('btnScramble').addEventListener('click', () => {
+            scramble();
+        });
+
+        // Render loop
+        let lastFrameTime = performance.now();
+        function render(time) {
+            const dt = Math.min((time - lastFrameTime) / 1000, 0.05);
+            lastFrameTime = time;
+
+            updateParticles(dt);
+
+            if (!document.hidden && (needsRender || particleAlphas.some(a => a > 0))) {
+                renderer.render(scene, camera);
+                needsRender = false;
+            }
+            requestAnimationFrame(render);
+        }
+
+        needsRender = true;
+        render();
+
+        // First interaction: scramble so user sees it's a live cube
+        let firstInteraction = true;
+        function onFirstInteraction() {
+            if (firstInteraction) {
+                firstInteraction = false;
+                scramble();
+                window.removeEventListener('mousedown', onFirstInteraction);
+                window.removeEventListener('touchstart', onFirstInteraction);
+            }
+        }
+        window.addEventListener('mousedown', onFirstInteraction);
+        window.addEventListener('touchstart', onFirstInteraction);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>工作中正确使用 Codex 的教程</title>
+  <style>
+    :root {
+      --bg: #08111f;
+      --bg-2: #0d1b2e;
+      --panel: rgba(11, 22, 38, 0.82);
+      --panel-2: rgba(16, 31, 52, 0.9);
+      --line: rgba(172, 197, 255, 0.16);
+      --text: #eaf1ff;
+      --muted: #a7b6d1;
+      --brand: #6ee7ff;
+      --brand-2: #9d7cff;
+      --good: #4ade80;
+      --warn: #fbbf24;
+      --bad: #fb7185;
+      --code: #d5e8ff;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      --radius: 22px;
+      --radius-sm: 14px;
+      --max: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(110, 231, 255, 0.12), transparent 24%),
+        radial-gradient(circle at top right, rgba(157, 124, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 50% 10%, rgba(74, 222, 128, 0.08), transparent 20%),
+        linear-gradient(180deg, #07111f 0%, #0a1525 35%, #08111f 100%);
+      min-height: 100vh;
+      line-height: 1.75;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+
+    .wrap {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(18px);
+      background: rgba(7, 17, 31, 0.66);
+      border-bottom: 1px solid rgba(172, 197, 255, 0.08);
+    }
+
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      background:
+        linear-gradient(135deg, rgba(110, 231, 255, 0.95), rgba(157, 124, 255, 0.95));
+      box-shadow: 0 10px 30px rgba(110, 231, 255, 0.25);
+      display: grid;
+      place-items: center;
+      color: #04111d;
+      font-size: 18px;
+    }
+
+    .nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .nav a {
+      font-size: 14px;
+      color: var(--muted);
+      padding: 8px 12px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      transition: 0.2s ease;
+    }
+
+    .nav a:hover {
+      color: var(--text);
+      border-color: rgba(110, 231, 255, 0.22);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .hero {
+      padding: 48px 0 26px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 0.95fr;
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    .hero-main,
+    .hero-side,
+    .card,
+    .panel {
+      background: linear-gradient(180deg, rgba(20, 37, 61, 0.84), rgba(11, 22, 38, 0.9));
+      border: 1px solid rgba(172, 197, 255, 0.12);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+    }
+
+    .hero-main {
+      padding: 34px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-main::before {
+      content: "";
+      position: absolute;
+      inset: auto -20% -35% auto;
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(110, 231, 255, 0.18), transparent 65%);
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #d6f7ff;
+      font-size: 14px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(110, 231, 255, 0.09);
+      border: 1px solid rgba(110, 231, 255, 0.16);
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(34px, 5vw, 60px);
+      line-height: 1.08;
+      letter-spacing: -0.04em;
+    }
+
+    .lead {
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+      max-width: 62ch;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 18px;
+      border-radius: 14px;
+      border: 1px solid rgba(172, 197, 255, 0.16);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      font-weight: 600;
+      transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(110, 231, 255, 0.28);
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, rgba(110, 231, 255, 0.95), rgba(157, 124, 255, 0.95));
+      color: #07111f;
+      border-color: transparent;
+    }
+
+    .btn.primary:hover { filter: brightness(1.02); }
+
+    .hero-side {
+      padding: 22px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .mini-stat {
+      border-radius: 18px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(172, 197, 255, 0.1);
+    }
+
+    .mini-stat .label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .mini-stat .value {
+      font-size: 26px;
+      font-weight: 800;
+      margin-top: 4px;
+      letter-spacing: -0.03em;
+    }
+
+    .mini-stat .desc {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    .section {
+      padding: 22px 0;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: -0.03em;
+    }
+
+    .section-head p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 68ch;
+      font-size: 15px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      padding: 22px;
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 19px;
+    }
+
+    .card p,
+    .card li,
+    .panel p,
+    .panel li {
+      color: var(--muted);
+      margin-top: 0;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(172, 197, 255, 0.1);
+      color: #d9e7ff;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .tag.good { color: #b6ffd1; border-color: rgba(74, 222, 128, 0.24); background: rgba(74, 222, 128, 0.08); }
+    .tag.warn { color: #ffe4ab; border-color: rgba(251, 191, 36, 0.28); background: rgba(251, 191, 36, 0.09); }
+    .tag.bad  { color: #ffc1cb; border-color: rgba(251, 113, 133, 0.24); background: rgba(251, 113, 133, 0.08); }
+
+    .workflow {
+      position: relative;
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    .workflow svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .flow-caption {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .flow-item {
+      border-radius: 16px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(172, 197, 255, 0.08);
+      min-height: 110px;
+    }
+
+    .flow-item b {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .flow-item span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .codebox {
+      background: #06101c;
+      border: 1px solid rgba(110, 231, 255, 0.15);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .codebox .bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #5b6478;
+    }
+    .dot.red { background: #ff6b6b; }
+    .dot.yellow { background: #f7c948; }
+    .dot.green { background: #4ade80; }
+
+    pre {
+      margin: 0;
+      padding: 18px;
+      overflow-x: auto;
+      color: var(--code);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 0.92fr 1.08fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 12px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 52px 1fr;
+      gap: 14px;
+      align-items: start;
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(172, 197, 255, 0.1);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .num {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      color: #07111f;
+      background: linear-gradient(135deg, rgba(110, 231, 255, 0.96), rgba(157, 124, 255, 0.96));
+    }
+
+    .step h3 {
+      margin: 2px 0 6px;
+      font-size: 18px;
+    }
+
+    .step p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .callout {
+      padding: 18px 20px;
+      border-radius: 18px;
+      border: 1px solid rgba(110, 231, 255, 0.18);
+      background: linear-gradient(180deg, rgba(110, 231, 255, 0.08), rgba(255, 255, 255, 0.02));
+    }
+
+    .callout strong { color: #dff8ff; }
+
+    .checklist {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .checklist li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(172, 197, 255, 0.08);
+      color: var(--muted);
+    }
+
+    .checklist li::before {
+      content: "✓";
+      color: var(--good);
+      font-weight: 700;
+      margin-top: 1px;
+    }
+
+    .do-dont {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .box {
+      padding: 20px;
+      border-radius: 18px;
+      border: 1px solid rgba(172, 197, 255, 0.1);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .box h3 { margin-top: 0; }
+
+    .box ul {
+      padding-left: 18px;
+      margin-bottom: 0;
+    }
+
+    .box.bad {
+      border-color: rgba(251, 113, 133, 0.2);
+      background: rgba(251, 113, 133, 0.05);
+    }
+
+    .box.good {
+      border-color: rgba(74, 222, 128, 0.2);
+      background: rgba(74, 222, 128, 0.05);
+    }
+
+    .footer {
+      padding: 34px 0 50px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .footer-inner {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(172, 197, 255, 0.08);
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
+      .hero-grid,
+      .split,
+      .grid-3,
+      .grid-2,
+      .do-dont,
+      .flow-caption {
+        grid-template-columns: 1fr;
+      }
+
+      .section-head,
+      .topbar-inner {
+        align-items: start;
+        flex-direction: column;
+      }
+
+      .nav { justify-content: flex-start; }
+    }
+
+    @media (max-width: 640px) {
+      .wrap { width: min(var(--max), calc(100% - 20px)); }
+      .hero { padding-top: 24px; }
+      .hero-main,
+      .hero-side,
+      .card,
+      .panel { border-radius: 18px; }
+      .hero-main { padding: 22px; }
+      .card, .panel { padding: 18px; }
+      h1 { font-size: 32px; }
+      .lead { font-size: 16px; }
+      .btn { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand">
+        <div class="brand-mark">C</div>
+        <div>
+          <div>Codex 工作流教程</div>
+          <div class="note">把 AI 当作可控的工程助手，而不是自动化魔法</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="#start">入门</a>
+        <a href="#workflow">工作流</a>
+        <a href="#scenes">场景</a>
+        <a href="#templates">模板</a>
+        <a href="#pitfalls">避坑</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <article class="hero-main">
+          <div class="eyebrow">面向真实工作场景的 Codex 使用方法</div>
+          <h1>工作中正确使用 Codex 的教程</h1>
+          <p class="lead">
+            这份教程不讲空泛概念，只讲能落地的用法：什么时候该让 Codex 帮你，
+            什么时候必须人工把关，怎样提问才高效，怎样把输出稳稳接入团队流程。
+          </p>
+          <div class="hero-actions">
+            <a class="btn primary" href="#workflow">先看正确流程</a>
+            <a class="btn" href="#templates">直接拿提示词模板</a>
+          </div>
+        </article>
+        <aside class="hero-side">
+          <div class="mini-stat">
+            <div class="label">核心原则</div>
+            <div class="value">人负责结果</div>
+            <div class="desc">Codex 负责提速，最终判断仍然由你承担。</div>
+          </div>
+          <div class="mini-stat">
+            <div class="label">最常见的错误</div>
+            <div class="value">只说“帮我改一下”</div>
+            <div class="desc">目标、上下文、约束缺失，输出就容易偏。</div>
+          </div>
+          <div class="mini-stat">
+            <div class="label">最有效的姿势</div>
+            <div class="value">小步迭代 + 复核</div>
+            <div class="desc">任务拆小、先问清、再修改、最后验证。</div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="start" class="section">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <h2>一、先建立正确心智模型</h2>
+          </div>
+          <p>先把 Codex 放在合适的位置，后面的效率和质量才有基础。</p>
+        </div>
+        <div class="grid-3">
+          <article class="card">
+            <h3>它擅长什么</h3>
+            <p>梳理代码、生成样板、改写重复逻辑、补测试、解释报错、做跨文件影响分析。</p>
+            <div class="tag-row">
+              <span class="tag good">代码理解</span>
+              <span class="tag good">重复劳动</span>
+              <span class="tag good">测试补齐</span>
+            </div>
+          </article>
+          <article class="card">
+            <h3>它不擅长什么</h3>
+            <p>不清楚业务背景时的主观决策、涉及合规/安全/财务的最终判断、缺少上下文时的猜测。</p>
+            <div class="tag-row">
+              <span class="tag warn">需要人工确认</span>
+              <span class="tag warn">高风险决策</span>
+            </div>
+          </article>
+          <article class="card">
+            <h3>你要负责什么</h3>
+            <p>定义问题，提供上下文，筛选方案，验证结果，决定是否合入。AI 不能替代你对结果负责。</p>
+            <div class="tag-row">
+              <span class="tag bad">最终责任在人</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="workflow" class="section">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <h2>二、正确工作流：先约束，再生成，再验证</h2>
+          </div>
+          <p>真正高效的用法，不是让 Codex 一次性“猜对”，而是把不确定性尽量前置消灭。</p>
+        </div>
+
+        <div class="panel workflow">
+          <svg viewBox="0 0 1120 240" role="img" aria-label="Codex 工作流示意图">
+            <defs>
+              <linearGradient id="g1" x1="0" x2="1">
+                <stop offset="0%" stop-color="#6ee7ff" />
+                <stop offset="100%" stop-color="#9d7cff" />
+              </linearGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="8" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            <rect x="18" y="30" width="200" height="120" rx="22" fill="rgba(255,255,255,0.04)" stroke="rgba(172,197,255,0.16)"/>
+            <rect x="306" y="30" width="200" height="120" rx="22" fill="rgba(255,255,255,0.04)" stroke="rgba(172,197,255,0.16)"/>
+            <rect x="594" y="30" width="200" height="120" rx="22" fill="rgba(255,255,255,0.04)" stroke="rgba(172,197,255,0.16)"/>
+            <rect x="882" y="30" width="220" height="120" rx="22" fill="rgba(255,255,255,0.04)" stroke="rgba(172,197,255,0.16)"/>
+
+            <path d="M218 90 H290" stroke="url(#g1)" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+            <path d="M506 90 H578" stroke="url(#g1)" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+            <path d="M794 90 H866" stroke="url(#g1)" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+            <path d="M283 74 L291 90 L283 106" fill="none" stroke="#6ee7ff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M571 74 L579 90 L571 106" fill="none" stroke="#6ee7ff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M859 74 L867 90 L859 106" fill="none" stroke="#6ee7ff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+
+            <text x="118" y="68" text-anchor="middle" fill="#eaf1ff" font-size="20" font-weight="700">1. 说明目标</text>
+            <text x="118" y="102" text-anchor="middle" fill="#a7b6d1" font-size="14">你要解决什么问题</text>
+
+            <text x="406" y="68" text-anchor="middle" fill="#eaf1ff" font-size="20" font-weight="700">2. 给足上下文</text>
+            <text x="406" y="102" text-anchor="middle" fill="#a7b6d1" font-size="14">文件、报错、约束、示例</text>
+
+            <text x="694" y="68" text-anchor="middle" fill="#eaf1ff" font-size="20" font-weight="700">3. 限定输出</text>
+            <text x="694" y="102" text-anchor="middle" fill="#a7b6d1" font-size="14">格式、边界、不要做什么</text>
+
+            <text x="992" y="68" text-anchor="middle" fill="#eaf1ff" font-size="20" font-weight="700">4. 人工复核</text>
+            <text x="992" y="102" text-anchor="middle" fill="#a7b6d1" font-size="14">测试、审查、再合并</text>
+          </svg>
+
+          <div class="flow-caption">
+            <div class="flow-item">
+              <b>先定义任务</b>
+              <span>例如“补一个接口的单测”比“帮我看看这段代码”有效得多。</span>
+            </div>
+            <div class="flow-item">
+              <b>再补上下文</b>
+              <span>贴相关文件、报错栈、接口约定、已有测试、业务限制。</span>
+            </div>
+            <div class="flow-item">
+              <b>然后限制答案</b>
+              <span>指定“只改这 2 个文件”“先给方案，不直接改代码”“输出 diff 风格”。</span>
+            </div>
+            <div class="flow-item">
+              <b>最后做验证</b>
+              <span>检查逻辑、跑测试、看边界情况，避免把建议直接当结果。</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap split">
+        <div class="panel">
+          <div class="section-head" style="margin-bottom: 12px;">
+            <div><h2 style="font-size: 24px; margin: 0;">三、一个高质量提问的结构</h2></div>
+          </div>
+          <div class="timeline">
+            <div class="step">
+              <div class="num">1</div>
+              <div>
+                <h3>说明目标</h3>
+                <p>先说你想得到什么结果，例如修 bug、补功能、优化性能、重构、写测试。</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="num">2</div>
+              <div>
+                <h3>给出上下文</h3>
+                <p>贴出相关代码、错误日志、接口返回、数据结构、调用链或文件列表。</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="num">3</div>
+              <div>
+                <h3>列出约束</h3>
+                <p>例如不能改数据库表、不能动公共接口、必须兼容旧版本、不能引入新依赖。</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="num">4</div>
+              <div>
+                <h3>定义输出形式</h3>
+                <p>你希望它给方案、直接修改、还是先列风险。把输出样式先说清楚，结果会稳很多。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="section-head" style="margin-bottom: 12px;">
+            <div><h2 style="font-size: 24px; margin: 0;">示例：差的提问 vs 好的提问</h2></div>
+          </div>
+          <div class="codebox" style="margin-bottom: 14px;">
+            <div class="bar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+            <pre><code>差：
+帮我改一下这个登录功能。
+
+好：
+我在 Vue 项目里修登录页的校验问题。
+现象：输入空密码时没有提示，提交后接口也被调用了。
+约束：不能改后端接口，只能改前端表单逻辑。
+请先分析原因，再给最小修改方案，最后补一个测试点清单。</code></pre>
+          </div>
+          <div class="callout">
+            <strong>结论：</strong>Codex 不是读心器。你给的信息越像真实工单，它越像一个能干的同事。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="scenes" class="section">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <h2>四、常见工作场景怎么用</h2>
+          </div>
+          <p>下面这些场景，基本覆盖日常开发里最值得让 Codex 上场的部分。</p>
+        </div>
+
+        <div class="grid-2">
+          <article class="card">
+            <h3>1. 接手陌生代码</h3>
+            <p>让 Codex 先帮你画出模块边界、调用链和关键文件，迅速建立认知。</p>
+            <div class="codebox">
+              <div class="bar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+              <pre><code>请先阅读这些文件：
+- src/views/Login.vue
+- src/services/auth.ts
+- src/store/user.ts
+
+输出：
+1. 登录流程图
+2. 每个文件的职责
+3. 可能的风险点
+4. 新人接手时最该先看的 3 个位置</code></pre>
+            </div>
+          </article>
+
+          <article class="card">
+            <h3>2. 修 bug</h3>
+            <p>把报错、复现步骤、预期结果和实际结果一次讲清，要求它先分析再改动。</p>
+            <div class="codebox">
+              <div class="bar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+              <pre><code>复现步骤：
+1. 打开订单页
+2. 选择筛选条件
+3. 点击导出
+
+问题：导出按钮没有反应。
+请先判断是事件没绑定、状态没更新，还是请求被拦截。
+如果要改代码，只允许修改当前页面和相关 service。</code></pre>
+            </div>
+          </article>
+
+          <article class="card">
+            <h3>3. 写测试</h3>
+            <p>让它根据真实边界条件补单测，而不是只写“理想输入”。</p>
+            <div class="codebox">
+              <div class="bar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+              <pre><code>请为这个函数补单元测试：
+- 正常输入
+- 空值
+- 非法值
+- 边界值
+- 异常抛出
+
+要求：使用现有测试框架，不引入新库，尽量覆盖分支。</code></pre>
+            </div>
+          </article>
+
+          <article class="card">
+            <h3>4. 重构代码</h3>
+            <p>先要它拆出重构目标，再给最小改动方案，最后再动代码，避免大刀阔斧地改坏逻辑。</p>
+            <div class="codebox">
+              <div class="bar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+              <pre><code>请把这个组件拆成：
+1. 数据处理层
+2. UI 展示层
+3. 可复用 hook / 工具函数
+
+限制：
+- 不改变页面行为
+- 不新增依赖
+- 先输出拆分建议，再输出改造步骤</code></pre>
+            </div>
+          </article>
+
+          <article class="card">
+            <h3>5. 写文档</h3>
+            <p>让它把复杂逻辑翻译成“给新人能看懂”的语言，尤其适合 README、操作手册和交接文档。</p>
+            <div class="codebox">
+              <div class="bar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+              <pre><code>请根据这段实现写一份说明文档：
+- 这个功能的目的
+- 用户如何使用
+- 常见失败原因
+- 排查路径
+- 修改时的注意事项</code></pre>
+            </div>
+          </article>
+
+          <article class="card">
+            <h3>6. 代码审查前预检</h3>
+            <p>在发起 review 之前，让 Codex 先帮你找潜在问题，减少无效往返。</p>
+            <div class="codebox">
+              <div class="bar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+              <pre><code>请从以下维度检查这次改动：
+- 逻辑正确性
+- 边界条件
+- 性能风险
+- 安全风险
+- 测试缺口
+
+重点输出：可能被 reviewer 挑出来的问题。</code></pre>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <h2>五、直接可用的提示词模板</h2>
+          </div>
+          <p>把下面的模板复制到日常工作里，再按自己的场景替换内容。</p>
+        </div>
+
+        <div class="grid-3" id="templates">
+          <article class="card">
+            <h3>模板 A：先分析再动手</h3>
+            <p>适合你自己还不确定问题在哪时使用。</p>
+            <div class="codebox">
+              <div class="bar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+              <pre><code>请先不要直接修改代码。
+基于我提供的文件和现象，先判断问题根因，列出 2-3 个可能方案，
+对每个方案说明代价、风险和适用条件，最后推荐一个最小改动方案。</code></pre>
+            </div>
+          </article>
+
+          <article class="card">
+            <h3>模板 B：限定改动范围</h3>
+            <p>适合线上问题或多人协作时，避免 AI 改到不该碰的地方。</p>
+            <div class="codebox">
+              <div class="bar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+              <pre><code>只允许修改以下文件：
+- xxx.vue
+- xxx.ts
+
+不要改接口定义，不要新增第三方依赖。
+如果你认为必须改其他地方，先解释原因并等我确认。</code></pre>
+            </div>
+          </article>
+
+          <article class="card">
+            <h3>模板 C：输出交付物</h3>
+            <p>适合把 Codex 当成一个能交作业的助手，而不是只给零散建议。</p>
+            <div class="codebox">
+              <div class="bar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+              <pre><code>请输出以下内容：
+1. 问题分析
+2. 修改方案
+3. 需要检查的测试点
+4. 可能的副作用
+5. 给团队成员的简短说明</code></pre>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="pitfalls" class="section">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <h2>六、最常见的坑</h2>
+          </div>
+          <p>很多“Codex 不好用”的体验，本质上是使用方式不对。</p>
+        </div>
+
+        <div class="do-dont">
+          <div class="box good">
+            <h3>应该这样做</h3>
+            <ul>
+              <li>把任务拆小，一次只让它解决一个明确问题。</li>
+              <li>提供真实上下文，不要只给片段化描述。</li>
+              <li>让它先分析，再改代码，再总结风险。</li>
+              <li>对结果做测试和人工审查。</li>
+              <li>高风险场景保守使用，尤其是安全、财务、权限相关逻辑。</li>
+            </ul>
+          </div>
+          <div class="box bad">
+            <h3>不要这样做</h3>
+            <ul>
+              <li>把模糊需求直接丢给它，期待一次性命中。</li>
+              <li>不看输出就直接复制到主分支。</li>
+              <li>让它同时改太多文件，还不说明边界。</li>
+              <li>忽略测试和回归验证，只看“代码像不像对的”。</li>
+              <li>在无法验证的场景里，把它当成事实来源。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <h2>七、团队里更稳的协作方式</h2>
+          </div>
+          <p>如果是多人协作，建议把 Codex 放进“辅助审查和加速执行”的位置，而不是“自动提交”的位置。</p>
+        </div>
+        <div class="grid-3">
+          <article class="card">
+            <h3>交付前</h3>
+            <p>先让 Codex 帮你做预检，发现逻辑漏洞、遗漏测试和文档缺口。</p>
+          </article>
+          <article class="card">
+            <h3>评审中</h3>
+            <p>把它当成第二双眼睛，帮助你提炼问题描述，缩短 reviewer 理解成本。</p>
+          </article>
+          <article class="card">
+            <h3>交付后</h3>
+            <p>让它帮你沉淀成模板、FAQ、排障指南，把一次性经验变成团队资产。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <div class="panel">
+          <div class="section-head" style="margin-bottom: 10px;">
+            <div><h2 style="font-size: 24px; margin: 0;">八、最后记住这三句话</h2></div>
+          </div>
+          <ul class="checklist">
+            <li>Codex 的价值在于把你从重复劳动里解放出来，不在于替你做判断。</li>
+            <li>提问质量决定输出质量，约束越清楚，结果越可控。</li>
+            <li>任何真正要进生产的改动，都必须经过人工复核和测试验证。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="wrap">
+        <div class="footer-inner">
+          <div>适合直接打开使用的单文件教程页。</div>
+          <div>文件名：<code>codex_workflow_tutorial.html</code></div>
+        </div>
+      </div>
+    </footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>最近10年前端框架、架构与组件模块教程</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --bg-2: #0c1727;
+      --panel: rgba(13, 24, 40, 0.82);
+      --panel-strong: rgba(17, 32, 52, 0.94);
+      --line: rgba(170, 195, 255, 0.14);
+      --text: #eef4ff;
+      --muted: #a7b7d2;
+      --brand: #6be3ff;
+      --brand-2: #9c7bff;
+      --good: #63e6be;
+      --warn: #ffd166;
+      --bad: #ff7a90;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+      --radius: 22px;
+      --radius-sm: 14px;
+      --max: 1200px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+      line-height: 1.75;
+      background:
+        radial-gradient(circle at top left, rgba(107, 227, 255, 0.14), transparent 24%),
+        radial-gradient(circle at top right, rgba(156, 123, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 50% 10%, rgba(99, 230, 190, 0.07), transparent 18%),
+        linear-gradient(180deg, #06101d 0%, #091423 40%, #07111f 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    .wrap {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      backdrop-filter: blur(18px);
+      background: rgba(7, 17, 31, 0.7);
+      border-bottom: 1px solid rgba(170, 195, 255, 0.08);
+    }
+
+    .topbar-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      padding: 14px 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      color: #04111d;
+      font-weight: 900;
+      background: linear-gradient(135deg, rgba(107, 227, 255, 0.98), rgba(156, 123, 255, 0.98));
+      box-shadow: 0 14px 34px rgba(107, 227, 255, 0.18);
+    }
+
+    .nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .nav a {
+      font-size: 14px;
+      color: var(--muted);
+      padding: 8px 12px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      transition: 0.2s ease;
+    }
+
+    .nav a:hover {
+      color: var(--text);
+      border-color: rgba(107, 227, 255, 0.22);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .hero {
+      padding: 42px 0 18px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 0.95fr;
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    .panel,
+    .card,
+    .hero-main,
+    .hero-side {
+      border-radius: var(--radius);
+      border: 1px solid rgba(170, 195, 255, 0.12);
+      background: linear-gradient(180deg, rgba(18, 33, 55, 0.84), rgba(11, 22, 38, 0.92));
+      box-shadow: var(--shadow);
+    }
+
+    .hero-main {
+      padding: 34px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-main::before,
+    .hero-main::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .hero-main::before {
+      inset: auto -18% -28% auto;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(107, 227, 255, 0.2), transparent 66%);
+    }
+
+    .hero-main::after {
+      inset: -18% auto auto -12%;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(156, 123, 255, 0.18), transparent 66%);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      color: #dcf8ff;
+      background: rgba(107, 227, 255, 0.08);
+      border: 1px solid rgba(107, 227, 255, 0.16);
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(34px, 5vw, 60px);
+      line-height: 1.08;
+      letter-spacing: -0.04em;
+    }
+
+    .lead {
+      margin: 0;
+      max-width: 66ch;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 18px;
+      border-radius: 14px;
+      border: 1px solid rgba(170, 195, 255, 0.16);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      font-weight: 600;
+      transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(107, 227, 255, 0.28);
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, rgba(107, 227, 255, 0.98), rgba(156, 123, 255, 0.98));
+      color: #04111d;
+      border-color: transparent;
+    }
+
+    .hero-side {
+      padding: 22px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .stat {
+      border-radius: 18px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(170, 195, 255, 0.1);
+    }
+
+    .stat .label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .stat .value {
+      margin-top: 4px;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .stat .desc {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    .section {
+      padding: 18px 0;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: -0.03em;
+    }
+
+    .section-head p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 70ch;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      padding: 20px;
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 20px;
+      letter-spacing: -0.02em;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .tag {
+      font-size: 12px;
+      color: #d8e7ff;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(170, 195, 255, 0.12);
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .pros-cons {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .pros,
+    .cons {
+      border-radius: 16px;
+      padding: 14px;
+      border: 1px solid rgba(170, 195, 255, 0.1);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .pros strong { color: var(--good); }
+    .cons strong { color: var(--warn); }
+
+    .pros ul,
+    .cons ul,
+    .list {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 14px;
+    }
+
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: 14px;
+      align-items: start;
+      padding: 16px 18px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(170, 195, 255, 0.1);
+    }
+
+    .timeline-year {
+      font-weight: 800;
+      color: #dff8ff;
+    }
+
+    .timeline-item p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: var(--radius);
+      border: 1px solid rgba(170, 195, 255, 0.12);
+      background: rgba(10, 19, 33, 0.86);
+      box-shadow: var(--shadow);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 880px;
+    }
+
+    th, td {
+      padding: 16px 14px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid rgba(170, 195, 255, 0.08);
+    }
+
+    th {
+      color: #dff4ff;
+      background: rgba(255, 255, 255, 0.03);
+      font-size: 14px;
+    }
+
+    td {
+      color: var(--muted);
+    }
+
+    td strong { color: var(--text); }
+
+    .callout {
+      margin-top: 18px;
+      padding: 18px 20px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(107, 227, 255, 0.1), rgba(156, 123, 255, 0.08));
+      border: 1px solid rgba(107, 227, 255, 0.16);
+    }
+
+    .callout strong { color: #effcff; }
+
+    .reference-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .ref {
+      display: flex;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(170, 195, 255, 0.1);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--muted);
+    }
+
+    .ref span {
+      color: #dff4ff;
+      flex: 0 0 86px;
+      font-weight: 700;
+    }
+
+    .ref a {
+      color: #dff4ff;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .footer {
+      padding: 28px 0 46px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .note {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 980px) {
+      .hero-grid,
+      .grid-2,
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .section-head {
+        flex-direction: column;
+        align-items: start;
+      }
+
+      .timeline-item {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        min-width: 720px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .wrap {
+        width: min(var(--max), calc(100% - 20px));
+      }
+
+      .topbar-inner {
+        flex-direction: column;
+        align-items: start;
+      }
+
+      .hero {
+        padding-top: 28px;
+      }
+
+      .hero-main,
+      .hero-side,
+      .card {
+        padding: 18px;
+      }
+
+      h1 {
+        font-size: 34px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand">
+        <div class="brand-mark">F</div>
+        <div>前端 10 年教程</div>
+      </div>
+      <nav class="nav" aria-label="页面导航">
+        <a href="#timeline">时间线</a>
+        <a href="#frameworks">框架</a>
+        <a href="#meta">架构</a>
+        <a href="#modules">模块</a>
+        <a href="#choose">选型</a>
+        <a href="#refs">参考</a>
+      </nav>
+    </div>
+  </div>
+
+  <main>
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div class="hero-main">
+          <div class="eyebrow">2015 - 2025 · 前端主流演进脉络</div>
+          <h1>最近 10 年流行的前端框架、架构和组件模块，一次讲清楚</h1>
+          <p class="lead">
+            这份教程不是“工具清单”，而是按时间和层次帮你理解前端为什么会变成今天这个样子：
+            先是组件化框架取代传统页面拼接，再是 SSR、SSG、Islands、微前端、Monorepo 等工程架构成熟，
+            最后形成“框架 + 架构 + 模块”的组合式开发方式。
+          </p>
+          <div class="hero-actions">
+            <a class="btn primary" href="#frameworks">先看核心框架</a>
+            <a class="btn" href="#choose">直接看怎么选</a>
+          </div>
+        </div>
+        <aside class="hero-side">
+          <div class="stat">
+            <div class="label">核心趋势</div>
+            <div class="value">组件化 + 工程化</div>
+            <div class="desc">前端不再只是写页面，而是在搭建可扩展的产品系统。</div>
+          </div>
+          <div class="stat">
+            <div class="label">近年热门方向</div>
+            <div class="value">SSR / SSG / Islands</div>
+            <div class="desc">目标很明确：更快首屏、更好 SEO、更少客户端负担。</div>
+          </div>
+          <div class="stat">
+            <div class="label">一句话理解</div>
+            <div class="value">框架解决开发效率，架构解决规模问题</div>
+            <div class="desc">组件模块则负责把复杂功能拆细、复用和治理。</div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section" id="timeline">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <h2>一张图看懂近 10 年演进</h2>
+            <p>下面这条时间线不是严格按年份切割，而是按“主流思路变化”来理解，比较适合入门和梳理技术栈。</p>
+          </div>
+        </div>
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="timeline-year">2015 - 2017</div>
+            <p>React 和 Vue 逐渐成为主流，Angular 进入现代版本。大家开始接受“组件化 UI”与“单向数据流”，前端从“页面脚本”走向“应用开发”。</p>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-year">2018 - 2020</div>
+            <p>工程化快速成熟，Webpack、Babel、TypeScript、ES 模块、组件库和状态管理普及。Next.js、Nuxt、Gatsby、Remix 等开始把 SSR 和 SSG 变成日常方案。</p>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-year">2021 - 2023</div>
+            <p>性能和开发体验成为重点。Svelte、Solid、Astro、Vite、Qwik、React Server Components、Vue 3 的组合式能力推动“更少 JS、更多编译时优化”的思路。</p>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-year">2024 - 2025</div>
+            <p>主流框架继续向“全栈化、服务端优先、可组合架构”演进。Meta-framework 已经不再是附属品，而是很多团队的默认起点。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="frameworks">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <h2>核心前端框架</h2>
+            <p>这些是近 10 年最重要的“UI 组织方式”。它们的共同点是：用组件拆分界面，用状态驱动视图，用生态承担复杂业务。</p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <article class="card">
+            <div class="tag-row">
+              <span class="tag">组件库型</span>
+              <span class="tag">生态最强</span>
+              <span class="tag">事实标准</span>
+            </div>
+            <h3>React</h3>
+            <p class="muted">
+              React 是由 Meta 推动的 UI 组件库，后来形成了几乎等同于“现代前端默认语言”的生态。
+              近年的 React Server Components、Server Functions、App Router 等能力，让它从纯客户端 UI 库继续向全栈方向扩展。
+            </p>
+            <div class="pros-cons">
+              <div class="pros">
+                <strong>作用与意义</strong>
+                <ul>
+                  <li>把界面拆成可复用组件。</li>
+                  <li>配合状态管理后，复杂交互更容易维护。</li>
+                  <li>周边生态最完整，招聘和社区资源最多。</li>
+                </ul>
+              </div>
+              <div class="cons">
+                <strong>缺点</strong>
+                <ul>
+                  <li>只提供 UI 层，项目结构需要自己选型。</li>
+                  <li>生态太大，方案太多，新手容易迷路。</li>
+                  <li>纯客户端方案容易出现首屏和包体积压力。</li>
+                </ul>
+              </div>
+            </div>
+            <p class="note">为什么流行：先发优势、社区巨大、可扩展性强、企业采用面广。</p>
+          </article>
+
+          <article class="card">
+            <div class="tag-row">
+              <span class="tag">渐进式</span>
+              <span class="tag">上手快</span>
+              <span class="tag">适合中小到中大型</span>
+            </div>
+            <h3>Vue</h3>
+            <p class="muted">
+              Vue 是“渐进式框架”，既能像一个轻量库一样嵌入页面，也能配合路由、状态和构建工具形成完整应用。
+              它强调易学、文档友好和灵活接入，这也是它在中文社区和大量业务系统里长期受欢迎的原因。
+            </p>
+            <div class="pros-cons">
+              <div class="pros">
+                <strong>作用与意义</strong>
+                <ul>
+                  <li>学习曲线平滑，适合快速交付。</li>
+                  <li>既能增强静态页面，也能构建 SPA/SSR。</li>
+                  <li>组合式 API 让大型项目更好组织逻辑。</li>
+                </ul>
+              </div>
+              <div class="cons">
+                <strong>缺点</strong>
+                <ul>
+                  <li>不同团队的架构风格差异较大。</li>
+                  <li>生态虽完整，但全球“默认标准感”不如 React。</li>
+                  <li>大型项目仍然需要比较强的工程治理。</li>
+                </ul>
+              </div>
+            </div>
+            <p class="note">为什么流行：易上手、渐进式接入、模板和文档友好、能覆盖多种项目形态。</p>
+          </article>
+
+          <article class="card">
+            <div class="tag-row">
+              <span class="tag">企业级</span>
+              <span class="tag">强约束</span>
+              <span class="tag">全家桶</span>
+            </div>
+            <h3>Angular</h3>
+            <p class="muted">
+              Angular 是一个完整的 Web 框架，强调一致性、依赖注入、路由、表单、测试和构建的系统化。
+              它更像“为大团队准备的标准化平台”，而不是单纯的 UI 库。
+            </p>
+            <div class="pros-cons">
+              <div class="pros">
+                <strong>作用与意义</strong>
+                <ul>
+                  <li>适合大团队统一规范和架构。</li>
+                  <li>内置能力多，减少技术选型碎片化。</li>
+                  <li>在长期维护、企业级场景里很稳定。</li>
+                </ul>
+              </div>
+              <div class="cons">
+                <strong>缺点</strong>
+                <ul>
+                  <li>概念多，上手成本高。</li>
+                  <li>框架本身偏重，学习门槛高于 React/Vue。</li>
+                  <li>对小项目来说有时显得“用力过猛”。</li>
+                </ul>
+              </div>
+            </div>
+            <p class="note">为什么流行：强约束、适合企业级长期维护、工具链统一、团队协作成本更低。</p>
+          </article>
+
+          <article class="card">
+            <div class="tag-row">
+              <span class="tag">编译型</span>
+              <span class="tag">少运行时</span>
+              <span class="tag">体积小</span>
+            </div>
+            <h3>Svelte</h3>
+            <p class="muted">
+              Svelte 的核心思路是“编译时做更多工作”，把组件代码尽量转换成更直接的 DOM 操作，
+              让浏览器少背一些运行时负担。它常被用来做轻量、快首屏和体验敏感的项目。
+            </p>
+            <div class="pros-cons">
+              <div class="pros">
+                <strong>作用与意义</strong>
+                <ul>
+                  <li>写法直观，模板很接近原生 HTML/CSS/JS。</li>
+                  <li>包体积通常更小，性能更轻。</li>
+                  <li>适合追求极致体验和简单心智模型的项目。</li>
+                </ul>
+              </div>
+              <div class="cons">
+                <strong>缺点</strong>
+                <ul>
+                  <li>生态和市场占有率不如 React。</li>
+                  <li>复杂企业项目的现成方案相对少一些。</li>
+                  <li>团队协作时需要统一编译期思想。</li>
+                </ul>
+              </div>
+            </div>
+            <p class="note">为什么流行：轻、快、写法爽，尤其适合对体积和体验敏感的场景。</p>
+          </article>
+        </div>
+
+        <div class="card" style="margin-top:18px;">
+          <div class="tag-row">
+            <span class="tag">细粒度响应式</span>
+            <span class="tag">高性能</span>
+            <span class="tag">新一代思路</span>
+          </div>
+          <h3>Solid</h3>
+          <p class="muted">
+            Solid 也是现代响应式 UI 框架里非常有代表性的一类，它强调细粒度响应式和更少的运行时开销。
+            和 React 的思路相近，但底层更新机制更偏向“精确更新”，适合对性能敏感且愿意接受新框架语法的团队。
+          </p>
+          <div class="pros-cons">
+            <div class="pros">
+              <strong>优势</strong>
+              <ul>
+                <li>更新粒度细，性能表现优秀。</li>
+                <li>API 设计相对现代，适合新项目。</li>
+                <li>对中小团队的性能优化成本更低。</li>
+              </ul>
+            </div>
+            <div class="cons">
+              <strong>缺点</strong>
+              <ul>
+                <li>开发者体量和生态仍在成长。</li>
+                <li>企业级大规模使用案例少于 React/Vue/Angular。</li>
+                <li>部分周边库选择没有那么丰富。</li>
+              </ul>
+            </div>
+          </div>
+          <p class="note">为什么流行：性能好、响应式模型清晰、代表了“后 React 时代”的新方向之一。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="meta">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <h2>框架上层架构：为什么大家开始用 Next.js / Nuxt / Remix / Astro</h2>
+            <p>这类工具通常被叫作 meta-framework。它们解决的不是“怎么写组件”，而是“怎么把应用跑得更快、更稳、更容易上线”。</p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <article class="card">
+            <div class="tag-row">
+              <span class="tag">React 生态</span>
+              <span class="tag">全栈框架</span>
+              <span class="tag">行业最常见</span>
+            </div>
+            <h3>Next.js</h3>
+            <p class="muted">
+              Next.js 是最有代表性的 React 框架之一，官方把它定义为用于构建全栈 Web 应用的框架。
+              它之所以流行，是因为把路由、SSR、静态生成、数据获取、构建优化和部署体验统一到了一个体系里。
+            </p>
+            <div class="pros-cons">
+              <div class="pros">
+                <strong>优势</strong>
+                <ul>
+                  <li>React 应用默认升级成全栈应用更容易。</li>
+                  <li>SSR/SSG/缓存/路由能力成熟。</li>
+                  <li>对 SEO、首屏和团队协作都友好。</li>
+                </ul>
+              </div>
+              <div class="cons">
+                <strong>缺点</strong>
+                <ul>
+                  <li>抽象层较多，调试链路更长。</li>
+                  <li>不同版本间的架构变化较快。</li>
+                  <li>会把你带进更强的框架约束里。</li>
+                </ul>
+              </div>
+            </div>
+            <p class="note">为什么流行：React 用户量大，而 Next.js 把“能上线”这件事大幅简化了。</p>
+          </article>
+
+          <article class="card">
+            <div class="tag-row">
+              <span class="tag">Vue 生态</span>
+              <span class="tag">开箱即用</span>
+              <span class="tag">服务端优先</span>
+            </div>
+            <h3>Nuxt</h3>
+            <p class="muted">
+              Nuxt 是 Vue 的全栈框架，强调零配置起步、文件式路由、多种渲染模式和模块生态。
+              它的意义是把 Vue 从“前端 UI 框架”扩展成了“可直接做产品”的完整平台。
+            </p>
+            <div class="pros-cons">
+              <div class="pros">
+                <strong>优势</strong>
+                <ul>
+                  <li>Vue 用户能很快进入完整应用开发。</li>
+                  <li>SSR、SSG、混合渲染、模块系统都很成熟。</li>
+                  <li>模块生态丰富，适合业务型网站。</li>
+                </ul>
+              </div>
+              <div class="cons">
+                <strong>缺点</strong>
+                <ul>
+                  <li>比纯 Vue 更有“框架味”，自由度下降。</li>
+                  <li>项目大了之后仍然需要认真做分层。</li>
+                  <li>部分高级能力需要理解服务端和构建细节。</li>
+                </ul>
+              </div>
+            </div>
+            <p class="note">为什么流行：Vue 社区庞大，Nuxt 让它在 SSR 和内容型网站上更完整。</p>
+          </article>
+
+          <article class="card">
+            <div class="tag-row">
+              <span class="tag">Web 标准</span>
+              <span class="tag">表单与数据流</span>
+              <span class="tag">“中心栈”思路</span>
+            </div>
+            <h3>Remix / React Router 体系</h3>
+            <p class="muted">
+              Remix 很有代表性的一点，是它非常强调 Web 标准、表单、HTTP 和数据流。
+              它把“页面提交、服务端处理、路由数据同步”这些老而重要的东西重新讲了一遍，
+              让很多开发者意识到：好框架不一定是把一切都包装成客户端状态。
+            </p>
+            <div class="pros-cons">
+              <div class="pros">
+                <strong>优势</strong>
+                <ul>
+                  <li>天然重视表单、导航和服务端交互。</li>
+                  <li>能减少许多“前后端状态不一致”问题。</li>
+                  <li>适合需要可靠数据流的业务系统。</li>
+                </ul>
+              </div>
+              <div class="cons">
+                <strong>缺点</strong>
+                <ul>
+                  <li>思维方式和“纯客户端 React”不同。</li>
+                  <li>团队若习惯前端状态驱动，切换成本高。</li>
+                  <li>生态热度不如 Next.js 那样广泛。</li>
+                </ul>
+              </div>
+            </div>
+            <p class="note">为什么流行：把 Web 原生能力重新放回中心，适合强调业务可靠性的场景。</p>
+          </article>
+
+          <article class="card">
+            <div class="tag-row">
+              <span class="tag">内容站</span>
+              <span class="tag">少 JS</span>
+              <span class="tag">性能优先</span>
+            </div>
+            <h3>Astro</h3>
+            <p class="muted">
+              Astro 面向内容驱动网站，核心主张是“默认零多余 JS”，并用 Islands 架构把需要交互的部分单独激活。
+              它特别适合博客、官网、营销页、电商内容页等“内容多、交互少”的站点。
+            </p>
+            <div class="pros-cons">
+              <div class="pros">
+                <strong>优势</strong>
+                <ul>
+                  <li>首屏快，SEO 友好。</li>
+                  <li>可混用 React、Vue、Svelte 等组件。</li>
+                  <li>让静态站和部分动态站的成本更低。</li>
+                </ul>
+              </div>
+              <div class="cons">
+                <strong>缺点</strong>
+                <ul>
+                  <li>交互很多的应用不一定是最佳选择。</li>
+                  <li>架构心智和传统 SPA 不同。</li>
+                  <li>在复杂应用里需要更严格地划分岛屿边界。</li>
+                </ul>
+              </div>
+            </div>
+            <p class="note">为什么流行：越来越多网站不是“应用型”，而是“内容型”，Astro 刚好解决这个痛点。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="modules">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <h2>相关组件模块：这些东西决定了项目能不能做大</h2>
+            <p>框架负责骨架，模块负责把实际功能接好。一个现代前端项目，通常不是只选一个框架，而是要把这些模块组合起来。</p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>模块</th>
+                <th>主要作用</th>
+                <th>为什么会流行</th>
+                <th>优点</th>
+                <th>缺点</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>路由模块</strong></td>
+                <td>管理页面跳转、嵌套路由、参数、加载状态和权限切换。</td>
+                <td>应用一复杂，就一定需要 URL 和页面状态的统一管理。</td>
+                <td>结构清楚，适合大应用分区管理。</td>
+                <td>路由层和权限层一旦设计差，后期改动会很痛。</td>
+              </tr>
+              <tr>
+                <td><strong>状态管理</strong></td>
+                <td>管理共享数据、跨组件通信、缓存和业务状态。</td>
+                <td>组件树变深之后，单靠 props 和事件会越来越麻烦。</td>
+                <td>逻辑集中，调试更容易，适合多人协作。</td>
+                <td>如果把所有状态都塞进去，会变成新的“全局泥潭”。</td>
+              </tr>
+              <tr>
+                <td><strong>数据请求 / 缓存</strong></td>
+                <td>处理接口请求、缓存、重试、失效、乐观更新。</td>
+                <td>现代前端已经大量依赖服务端数据，纯前端状态不够用。</td>
+                <td>减少重复请求，改善用户体验。</td>
+                <td>要理解服务端状态和客户端状态的边界。</td>
+              </tr>
+              <tr>
+                <td><strong>表单模块</strong></td>
+                <td>处理输入、校验、提交、错误提示和联动逻辑。</td>
+                <td>业务系统里最常见的交互之一就是“填表 + 提交”。</td>
+                <td>让复杂表单更容易拆分和维护。</td>
+                <td>表单状态很细碎，规则一多就容易出错。</td>
+              </tr>
+              <tr>
+                <td><strong>UI 组件库</strong></td>
+                <td>提供按钮、弹窗、表格、菜单、抽屉等基础组件。</td>
+                <td>企业项目需要统一视觉、交互和可访问性。</td>
+                <td>开发快，设计一致性高。</td>
+                <td>定制性受限，重度改样式时可能很别扭。</td>
+              </tr>
+              <tr>
+                <td><strong>样式方案</strong></td>
+                <td>管理 CSS、主题、响应式、暗色模式和组件局部样式。</td>
+                <td>页面越来越多，样式治理比“写几个类名”重要得多。</td>
+                <td>可维护性更强，避免全局污染。</td>
+                <td>方案过多，会让团队在命名和约定上分裂。</td>
+              </tr>
+              <tr>
+                <td><strong>构建工具</strong></td>
+                <td>编译、打包、按需加载、热更新和代码拆分。</td>
+                <td>前端工程越来越重，需要更快的开发反馈和更稳的产物。</td>
+                <td>开发体验好，产物更可控。</td>
+                <td>构建链太复杂时，排错成本上升。</td>
+              </tr>
+              <tr>
+                <td><strong>TypeScript</strong></td>
+                <td>给 JavaScript 增加类型系统和更强的重构能力。</td>
+                <td>项目一大，类型约束能显著降低协作成本。</td>
+                <td>减少低级错误，提升可维护性。</td>
+                <td>类型写得过度复杂，会反过来增加心智负担。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid-3" style="margin-top:18px;">
+          <article class="card">
+            <h3>组件库为什么长期流行</h3>
+            <p class="muted">
+              企业项目常见的问题不是“页面不会写”，而是“每个页面都长得不一样、交互不一致、维护没人接”。
+              组件库把这些重复劳动抽掉，让团队把时间花在业务上。
+            </p>
+          </article>
+          <article class="card">
+            <h3>状态管理为什么会反复演进</h3>
+            <p class="muted">
+              早期靠全局对象，后来靠 Redux、MobX、Vuex，再后来是更轻的 Zustand、Pinia、Signals、Query 类库。
+              变化的核心不是“谁最好”，而是大家逐渐意识到不同类型状态要分开管。
+            </p>
+          </article>
+          <article class="card">
+            <h3>数据请求类库为什么变热</h3>
+            <p class="muted">
+              现在前端大量在处理“服务端状态”，例如列表、分页、缓存、刷新和乐观更新。
+              因此真正好用的方案，往往不是“再造一个状态仓库”，而是更聪明地管理请求和缓存。
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="choose">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <h2>怎么选：按场景来，不要按“谁最火”来</h2>
+            <p>流行不等于适合。真正要看的，是项目类型、团队经验、性能目标、长期维护成本和招人难度。</p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <article class="card">
+            <h3>适合新项目的简单判断</h3>
+            <ul class="list">
+              <li>做内容站、官网、博客、电商落地页：优先考虑 Astro、Next.js、Nuxt。</li>
+              <li>做中大型业务后台：React + Next.js，或 Vue + Nuxt，或者 Angular。</li>
+              <li>做交互轻、追求极致性能的小产品：Svelte、Solid、Astro 都值得看。</li>
+              <li>团队很大、规范要求极强：Angular、成熟的 React/Next 架构、Nx Monorepo 更稳。</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h3>你应该重点看什么</h3>
+            <ul class="list">
+              <li><strong>开发效率</strong>：新手上手快不快，协作是否顺。</li>
+              <li><strong>性能</strong>：首屏、交互、包体积和缓存策略。</li>
+              <li><strong>生态</strong>：路由、表单、图表、组件库、权限、国际化是否成熟。</li>
+              <li><strong>长期维护</strong>：版本升级、规范、测试、CI/CD、代码结构是否可控。</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="callout">
+          <strong>最实用的一句话：</strong>
+          如果你的项目是“页面很多、内容很多、交互不算特别重”，那就优先考虑服务端优先或静态优先的架构；
+          如果你的项目是“业务复杂、交互密集、多人协作”，那就优先考虑成熟框架 + 组件库 + 状态管理 + 工程化方案。
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="refs">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <h2>参考资料</h2>
+            <p>以下是我写这份教程时主要参考的官方文档和调查页，方便你继续深入看原始资料。</p>
+          </div>
+        </div>
+
+        <div class="reference-list">
+          <div class="ref"><span>React</span><a href="https://react.dev/" target="_blank" rel="noreferrer">https://react.dev/</a></div>
+          <div class="ref"><span>React RSC</span><a href="https://react.dev/reference/rsc/server-components" target="_blank" rel="noreferrer">Server Components</a></div>
+          <div class="ref"><span>Vue</span><a href="https://vuejs.org/guide/introduction.html" target="_blank" rel="noreferrer">The Progressive Framework</a></div>
+          <div class="ref"><span>Angular</span><a href="https://angular.dev/overview/" target="_blank" rel="noreferrer">What is Angular?</a></div>
+          <div class="ref"><span>Svelte</span><a href="https://svelte.dev/" target="_blank" rel="noreferrer">Svelte 官方首页</a></div>
+          <div class="ref"><span>Solid</span><a href="https://www.solidjs.com/" target="_blank" rel="noreferrer">Solid 官方首页</a></div>
+          <div class="ref"><span>Next.js</span><a href="https://nextjs.org/docs" target="_blank" rel="noreferrer">Next.js Docs</a></div>
+          <div class="ref"><span>Nuxt</span><a href="https://nuxt.com/" target="_blank" rel="noreferrer">Nuxt 官方首页</a></div>
+          <div class="ref"><span>Remix</span><a href="https://remix.run/" target="_blank" rel="noreferrer">Remix 官方首页</a></div>
+          <div class="ref"><span>Astro</span><a href="https://docs.astro.build/en/concepts/why-astro/" target="_blank" rel="noreferrer">Why Astro?</a></div>
+          <div class="ref"><span>Webpack</span><a href="https://webpack.js.org/concepts/" target="_blank" rel="noreferrer">Webpack Concepts</a></div>
+          <div class="ref"><span>Module Fed.</span><a href="https://webpack.js.org/concepts/module-federation/" target="_blank" rel="noreferrer">Module Federation</a></div>
+          <div class="ref"><span>Nx</span><a href="https://nx.dev/docs" target="_blank" rel="noreferrer">What is Nx?</a></div>
+          <div class="ref"><span>State of JS</span><a href="https://2024.stateofjs.com/en-US/libraries/front-end-frameworks/" target="_blank" rel="noreferrer">Front-end Frameworks 2024</a></div>
+          <div class="ref"><span>MDN</span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules" target="_blank" rel="noreferrer">JavaScript modules</a></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      本页按 2015 - 2025 的主流演进写成，重点是帮助你建立“框架、架构、组件模块”三层认知，而不是背工具名。
+    </div>
+  </footer>
+</body>
+</html>
