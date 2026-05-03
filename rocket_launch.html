@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>火箭发射模拟系统</title>
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0a0e27;
+            --bg-panel: rgba(15, 23, 42, 0.8);
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-orange: #f97316;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1e293b 100%);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 280px 1fr 280px;
+            grid-template-rows: 80px 1fr 120px;
+            height: 100vh;
+            gap: 15px;
+            padding: 15px;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: var(--bg-panel);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .mission-time {
+            font-size: 32px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            color: var(--accent-orange);
+        }
+
+        .panel {
+            background: var(--bg-panel);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+        }
+
+        .panel h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .param {
+            margin-bottom: 18px;
+        }
+
+        .param-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .param-value {
+            font-size: 24px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            color: var(--text-primary);
+        }
+
+        .param-unit {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-left: 5px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-nominal { background: var(--accent-green); }
+        .status-warning { background: var(--accent-orange); }
+        .status-critical { background: var(--accent-red); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .main-view {
+            grid-column: 2;
+            grid-row: 2;
+            display: grid;
+            gap: 15px;
+            transition: all 0.5s ease;
+        }
+
+        .main-view.single-view {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr;
+        }
+
+        .main-view.multi-view {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+        }
+
+        .camera-view {
+            background: var(--bg-panel);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+            transition: opacity 0.5s ease;
+            min-height: 0;
+            min-width: 0;
+        }
+
+        .main-view.single-view .camera-view:not(:first-child) {
+            display: none;
+        }
+
+        .camera-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            z-index: 10;
+        }
+
+        .camera-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #threeContainer {
+            width: 100%;
+            height: 100%;
+        }
+
+        #threeContainer canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .control-panel {
+            grid-column: 1 / -1;
+            background: var(--bg-panel);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .launch-button {
+            width: 180px;
+            height: 70px;
+            border: none;
+            border-radius: 12px;
+            font-size: 20px;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .launch-button.ready {
+            background: linear-gradient(135deg, var(--accent-green), #059669);
+            color: white;
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+        }
+
+        .launch-button.ready:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.7);
+        }
+
+        .launch-button.launching {
+            background: linear-gradient(135deg, var(--accent-orange), #ea580c);
+            color: white;
+            animation: launch-pulse 0.5s infinite;
+        }
+
+        .launch-button.completed {
+            background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+            color: white;
+        }
+
+        @keyframes launch-pulse {
+            0%, 100% { box-shadow: 0 0 30px rgba(249, 115, 22, 0.5); }
+            50% { box-shadow: 0 0 50px rgba(249, 115, 22, 0.9); }
+        }
+
+        .status-message {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 火箭发射模拟系统</h1>
+            <div class="mission-time" id="missionTime">T-00:00</div>
+        </div>
+
+        <div class="panel">
+            <h2>飞行参数</h2>
+            <div class="param">
+                <div class="param-label">速度</div>
+                <div class="param-value" id="velocity">0<span class="param-unit">m/s</span></div>
+            </div>
+            <div class="param">
+                <div class="param-label">高度</div>
+                <div class="param-value" id="altitude">0.0<span class="param-unit">km</span></div>
+            </div>
+            <div class="param">
+                <div class="param-label">加速度</div>
+                <div class="param-value" id="acceleration">0.0<span class="param-unit">g</span></div>
+            </div>
+            <div class="param">
+                <div class="param-label">姿态角</div>
+                <div class="param-value" id="attitude">90<span class="param-unit">°</span></div>
+            </div>
+        </div>
+
+        <div class="main-view single-view" id="mainView">
+            <div class="camera-view">
+                <div class="camera-label">📹 发射台中景</div>
+                <div id="threeContainer" style="width: 100%; height: 100%;"></div>
+            </div>
+            <div class="camera-view">
+                <div class="camera-label">📹 侧面追踪</div>
+                <canvas class="camera-canvas" id="camera2"></canvas>
+            </div>
+            <div class="camera-view">
+                <div class="camera-label">📹 火箭内部</div>
+                <canvas class="camera-canvas" id="camera3"></canvas>
+            </div>
+            <div class="camera-view">
+                <div class="camera-label">📹 地面雷达</div>
+                <canvas class="camera-canvas" id="camera4"></canvas>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>系统状态</h2>
+            <div class="param">
+                <div class="param-label">引擎推力</div>
+                <div class="param-value">
+                    <span class="status-indicator status-nominal" id="engineStatus"></span>
+                    <span id="thrust">0</span><span class="param-unit">%</span>
+                </div>
+            </div>
+            <div class="param">
+                <div class="param-label">燃料剩余</div>
+                <div class="param-value" id="fuel">100<span class="param-unit">%</span></div>
+            </div>
+            <div class="param">
+                <div class="param-label">内部气压</div>
+                <div class="param-value" id="pressureInt">101.3<span class="param-unit">kPa</span></div>
+            </div>
+            <div class="param">
+                <div class="param-label">外部气压</div>
+                <div class="param-value" id="pressureExt">101.3<span class="param-unit">kPa</span></div>
+            </div>
+            <div class="param">
+                <div class="param-label">舱内温度</div>
+                <div class="param-value" id="temperature">22<span class="param-unit">°C</span></div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <button class="launch-button ready" id="launchBtn">点火发射</button>
+            <div class="status-message" id="statusMsg">系统就绪</div>
+        </div>
+    </div>
+
+    <script>
+        class RocketLaunch {
+            constructor() {
+                this.state = 'ready';
+                this.time = 0;
+                this.velocity = 0;
+                this.altitude = 0;
+                this.acceleration = 0;
+                this.thrust = 0;
+                this.fuel = 100;
+                this.attitude = 90;
+                this.viewMode = 'single';
+
+                this.initThreeJS();
+                this.initCanvases();
+                this.initControls();
+                this.renderLoop();
+            }
+
+            initThreeJS() {
+                const container = document.getElementById('threeContainer');
+                console.log('Container:', container, 'Size:', container.offsetWidth, container.offsetHeight);
+
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x0a0e27);
+
+                this.camera = new THREE.PerspectiveCamera(60, container.offsetWidth / container.offsetHeight, 0.1, 1000);
+                this.camera.position.set(15, 10, 25);
+                this.camera.lookAt(0, 10, 0);
+
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(container.offsetWidth, container.offsetHeight);
+                container.appendChild(this.renderer.domElement);
+
+                console.log('Renderer size:', this.renderer.domElement.width, this.renderer.domElement.height);
+
+                // 光照
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+                this.scene.add(ambientLight);
+                const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                dirLight.position.set(10, 20, 10);
+                this.scene.add(dirLight);
+
+                // 地面
+                const groundGeo = new THREE.PlaneGeometry(100, 100);
+                const groundMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+                const ground = new THREE.Mesh(groundGeo, groundMat);
+                ground.rotation.x = -Math.PI / 2;
+                this.scene.add(ground);
+
+                // 发射塔结构
+                const towerMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.6 });
+
+                // 主塔架 - 4根立柱
+                const pillarGeo = new THREE.BoxGeometry(0.5, 25, 0.5);
+                const pillarPositions = [
+                    { x: -6, z: -6 },
+                    { x: 6, z: -6 },
+                    { x: -6, z: 6 },
+                    { x: 6, z: 6 }
+                ];
+                pillarPositions.forEach(pos => {
+                    const pillar = new THREE.Mesh(pillarGeo, towerMat);
+                    pillar.position.set(pos.x, 12.5, pos.z);
+                    this.scene.add(pillar);
+                });
+
+                // 横梁连接
+                const beamGeo = new THREE.BoxGeometry(12, 0.3, 0.3);
+                for (let i = 0; i < 5; i++) {
+                    const y = 5 + i * 5;
+                    // 前后横梁
+                    const beam1 = new THREE.Mesh(beamGeo, towerMat);
+                    beam1.position.set(0, y, -6);
+                    this.scene.add(beam1);
+                    const beam2 = new THREE.Mesh(beamGeo, towerMat);
+                    beam2.position.set(0, y, 6);
+                    this.scene.add(beam2);
+                    // 左右横梁
+                    const beam3 = new THREE.Mesh(beamGeo, towerMat);
+                    beam3.rotation.y = Math.PI / 2;
+                    beam3.position.set(-6, y, 0);
+                    this.scene.add(beam3);
+                    const beam4 = new THREE.Mesh(beamGeo, towerMat);
+                    beam4.rotation.y = Math.PI / 2;
+                    beam4.position.set(6, y, 0);
+                    this.scene.add(beam4);
+                }
+
+                // 发射平台
+                const platformGeo = new THREE.CylinderGeometry(8, 8, 0.5, 32);
+                const platformMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.5 });
+                const platform = new THREE.Mesh(platformGeo, platformMat);
+                platform.position.y = 0.25;
+                this.scene.add(platform);
+
+                // 平台中心开口（火焰导流槽）
+                const holeGeo = new THREE.CylinderGeometry(2.5, 2.5, 0.6, 32);
+                const holeMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+                const hole = new THREE.Mesh(holeGeo, holeMat);
+                hole.position.y = 0.25;
+                this.scene.add(hole);
+
+                // 火箭
+                this.rocket = new THREE.Group();
+
+                // 第一级 - 主推进段
+                const stage1Geo = new THREE.CylinderGeometry(1.2, 1.2, 10, 32);
+                const stage1Mat = new THREE.MeshStandardMaterial({
+                    color: 0xf8fafc,
+                    metalness: 0.3,
+                    roughness: 0.4
+                });
+                const stage1 = new THREE.Mesh(stage1Geo, stage1Mat);
+                stage1.position.y = 5;
+                this.rocket.add(stage1);
+
+                // 第一级底部加强环
+                const ring1Geo = new THREE.CylinderGeometry(1.3, 1.3, 0.3, 32);
+                const ringMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.6 });
+                const ring1 = new THREE.Mesh(ring1Geo, ringMat);
+                ring1.position.y = 0.15;
+                this.rocket.add(ring1);
+
+                // 级间段
+                const interGeo = new THREE.CylinderGeometry(1.1, 1.2, 1, 32);
+                const interMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7 });
+                const inter = new THREE.Mesh(interGeo, interMat);
+                inter.position.y = 10.5;
+                this.rocket.add(inter);
+
+                // 第二级 - 上面级
+                const stage2Geo = new THREE.CylinderGeometry(1.1, 1.1, 6, 32);
+                const stage2Mat = new THREE.MeshStandardMaterial({
+                    color: 0xe2e8f0,
+                    metalness: 0.3,
+                    roughness: 0.4
+                });
+                const stage2 = new THREE.Mesh(stage2Geo, stage2Mat);
+                stage2.position.y = 14;
+                this.rocket.add(stage2);
+
+                // 整流罩底部
+                const fairing1Geo = new THREE.CylinderGeometry(1.1, 1.1, 1.5, 32);
+                const fairing1 = new THREE.Mesh(fairing1Geo, stage1Mat);
+                fairing1.position.y = 17.75;
+                this.rocket.add(fairing1);
+
+                // 整流罩锥形部分
+                const fairing2Geo = new THREE.ConeGeometry(1.1, 5, 32);
+                const fairing2 = new THREE.Mesh(fairing2Geo, stage1Mat);
+                fairing2.position.y = 21;
+                this.rocket.add(fairing2);
+
+                // 主引擎喷管 x4
+                const nozzleGeo = new THREE.CylinderGeometry(0.35, 0.45, 1.2, 16);
+                const nozzleMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8 });
+                const nozzlePositions = [
+                    { x: 0.5, z: 0.5 },
+                    { x: -0.5, z: 0.5 },
+                    { x: 0.5, z: -0.5 },
+                    { x: -0.5, z: -0.5 }
+                ];
+                nozzlePositions.forEach(pos => {
+                    const nozzle = new THREE.Mesh(nozzleGeo, nozzleMat);
+                    nozzle.position.set(pos.x, -0.6, pos.z);
+                    this.rocket.add(nozzle);
+                });
+
+                // 助推器 x2（两侧）
+                const boosterGeo = new THREE.CylinderGeometry(0.5, 0.5, 12, 24);
+                const boosterMat = new THREE.MeshStandardMaterial({
+                    color: 0xfbbf24,
+                    metalness: 0.4,
+                    roughness: 0.3
+                });
+
+                this.boosters = [];
+                [-2.2, 2.2].forEach(x => {
+                    const booster = new THREE.Mesh(boosterGeo, boosterMat);
+                    booster.position.set(x, 4, 0);
+                    this.rocket.add(booster);
+                    this.boosters.push(booster);
+
+                    // 助推器头锥
+                    const boosterNose = new THREE.Mesh(
+                        new THREE.ConeGeometry(0.5, 1.5, 24),
+                        boosterMat
+                    );
+                    boosterNose.position.set(x, 10.75, 0);
+                    this.rocket.add(boosterNose);
+
+                    // 助推器引擎
+                    const boosterNozzle = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.35, 0.45, 1, 16),
+                        nozzleMat
+                    );
+                    boosterNozzle.position.set(x, -2.5, 0);
+                    this.rocket.add(boosterNozzle);
+
+                    // 助推器连接支架
+                    const strutGeo = new THREE.BoxGeometry(0.1, 0.5, 0.1);
+                    for (let y = 2; y < 9; y += 3) {
+                        const strut = new THREE.Mesh(strutGeo, ringMat);
+                        strut.position.set(x > 0 ? 1.2 : -1.2, y, 0);
+                        this.rocket.add(strut);
+                    }
+                });
+
+                this.rocket.position.y = 0;
+                this.scene.add(this.rocket);
+
+                // 添加文字到火箭主体
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+
+                // 透明背景
+                ctx.clearRect(0, 0, 256, 512);
+
+                // 中国红
+                ctx.fillStyle = '#E60012';
+                ctx.font = 'bold 72px SimSun, STSong, serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // 竖排文字
+                const text = '神舟六六六号';
+                const lineHeight = 80;
+                const startY = 80;
+                for (let i = 0; i < text.length; i++) {
+                    ctx.fillText(text[i], 128, startY + i * lineHeight);
+                }
+
+                const texture = new THREE.CanvasTexture(canvas);
+                const textMat = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    transparent: true
+                });
+                const textGeo = new THREE.PlaneGeometry(1.5, 3.5);
+                const textMesh = new THREE.Mesh(textGeo, textMat);
+                textMesh.position.set(0, 14.5, 1.21);
+                this.rocket.add(textMesh);
+
+                // 简单的鼠标控制
+                this.isDragging = false;
+                this.previousMousePosition = { x: 0, y: 0 };
+                this.cameraAngle = { theta: 0.8, phi: 0.4 };
+                this.cameraDistance = 30;
+
+                container.addEventListener('mousedown', (e) => {
+                    this.isDragging = true;
+                    this.previousMousePosition = { x: e.clientX, y: e.clientY };
+                });
+                container.addEventListener('mousemove', (e) => {
+                    if (this.isDragging && this.state === 'ready') {
+                        const deltaX = e.clientX - this.previousMousePosition.x;
+                        const deltaY = e.clientY - this.previousMousePosition.y;
+                        this.cameraAngle.theta -= deltaX * 0.01;
+                        this.cameraAngle.phi -= deltaY * 0.01;
+                        this.cameraAngle.phi = Math.max(0.1, Math.min(Math.PI - 0.1, this.cameraAngle.phi));
+                        this.previousMousePosition = { x: e.clientX, y: e.clientY };
+                    }
+                });
+                container.addEventListener('mouseup', () => {
+                    this.isDragging = false;
+                });
+                container.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    this.cameraDistance += e.deltaY * 0.05;
+                    this.cameraDistance = Math.max(15, Math.min(50, this.cameraDistance));
+                });
+
+                // 火焰粒子
+                this.flameParticles = [];
+            }
+
+            initCanvases() {
+                this.cameras2d = ['camera2', 'camera3', 'camera4'].map(id => {
+                    const canvas = document.getElementById(id);
+                    canvas.width = canvas.offsetWidth * 2;
+                    canvas.height = canvas.offsetHeight * 2;
+                    return { canvas, ctx: canvas.getContext('2d') };
+                });
+            }
+
+            initControls() {
+                document.getElementById('launchBtn').addEventListener('click', () => {
+                    if (this.state === 'ready') this.startLaunch();
+                });
+            }
+
+            startLaunch() {
+                this.state = 'launching';
+                this.time = 0;
+                document.getElementById('launchBtn').className = 'launch-button launching';
+                document.getElementById('launchBtn').textContent = '发射中';
+                document.getElementById('statusMsg').textContent = '主引擎点火';
+            }
+
+            renderLoop() {
+                requestAnimationFrame(() => this.renderLoop());
+
+                // 更新相机位置
+                const targetY = this.state === 'launching' ? this.rocket.position.y : 10;
+                this.camera.position.x = this.cameraDistance * Math.sin(this.cameraAngle.phi) * Math.cos(this.cameraAngle.theta);
+                this.camera.position.y = targetY + this.cameraDistance * Math.cos(this.cameraAngle.phi);
+                this.camera.position.z = this.cameraDistance * Math.sin(this.cameraAngle.phi) * Math.sin(this.cameraAngle.theta);
+                this.camera.lookAt(0, targetY, 0);
+
+                if (this.state === 'launching') {
+                    this.time += 0.016;
+                    this.updatePhysics();
+                    this.updateUI();
+
+                    // 5秒后切换到多视角
+                    if (this.time >= 5 && this.viewMode === 'single') {
+                        this.viewMode = 'multi';
+                        document.getElementById('mainView').className = 'main-view multi-view';
+                        setTimeout(() => {
+                            const container = document.getElementById('threeContainer');
+                            this.renderer.setSize(container.offsetWidth, container.offsetHeight);
+                            this.camera.aspect = container.offsetWidth / container.offsetHeight;
+                            this.camera.updateProjectionMatrix();
+
+                            this.cameras2d.forEach(cam => {
+                                cam.canvas.width = cam.canvas.offsetWidth * 2;
+                                cam.canvas.height = cam.canvas.offsetHeight * 2;
+                            });
+                        }, 500);
+                    }
+
+                    if (this.altitude >= 120) {
+                        this.complete();
+                    }
+                }
+
+                this.renderThreeJS();
+                if (this.viewMode === 'multi') {
+                    this.render2DCameras();
+                }
+            }
+
+            renderThreeJS() {
+                // 更新火箭位置和姿态
+                if (this.state === 'launching') {
+                    this.rocket.position.y = this.altitude * 100;
+                    this.rocket.rotation.z = (90 - this.attitude) * Math.PI / 180;
+
+                    // 主引擎火焰 x4
+                    if (this.thrust > 0) {
+                        const flameMat = new THREE.MeshBasicMaterial({
+                            color: new THREE.Color().setHSL(0.1, 1, 0.5 + Math.random() * 0.2),
+                            transparent: true,
+                            opacity: 0.8
+                        });
+
+                        const nozzlePositions = [
+                            { x: 0.5, z: 0.5 },
+                            { x: -0.5, z: 0.5 },
+                            { x: 0.5, z: -0.5 },
+                            { x: -0.5, z: -0.5 }
+                        ];
+
+                        nozzlePositions.forEach(pos => {
+                            const flameGeo = new THREE.ConeGeometry(0.4, this.thrust * 0.08, 8);
+                            const flame = new THREE.Mesh(flameGeo, flameMat.clone());
+                            flame.position.copy(this.rocket.position);
+                            flame.position.x += pos.x * Math.cos(this.rocket.rotation.z);
+                            flame.position.z += pos.z;
+                            flame.position.y -= this.thrust * 0.04 + 1.2;
+                            flame.rotation.z = this.rocket.rotation.z;
+                            this.scene.add(flame);
+                            setTimeout(() => this.scene.remove(flame), 50);
+                        });
+
+                        // 助推器火焰 x2（前10秒）
+                        if (this.time < 10) {
+                            [-2.2, 2.2].forEach(x => {
+                                const boosterFlame = new THREE.Mesh(
+                                    new THREE.ConeGeometry(0.35, this.thrust * 0.06, 8),
+                                    flameMat.clone()
+                                );
+                                boosterFlame.position.copy(this.rocket.position);
+                                boosterFlame.position.x += x * Math.cos(this.rocket.rotation.z);
+                                boosterFlame.position.y -= this.thrust * 0.03 + 3;
+                                boosterFlame.rotation.z = this.rocket.rotation.z;
+                                this.scene.add(boosterFlame);
+                                setTimeout(() => this.scene.remove(boosterFlame), 50);
+                            });
+                        }
+                    }
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            updatePhysics() {
+                const t = this.time;
+
+                if (t < 10) {
+                    this.thrust = 100;
+                    this.acceleration = 3.5;
+                    this.velocity = t * 35;
+                    this.altitude = 0.5 * 3.5 * 9.8 * t * t / 1000;
+                    this.fuel = 100 - t * 8;
+                    this.attitude = 90;
+                } else if (t < 30) {
+                    this.thrust = 85;
+                    this.acceleration = 2.8;
+                    const t2 = t - 10;
+                    this.velocity = 350 + t2 * 28;
+                    this.altitude = 0.612 + 350 * t2 / 1000 + 0.5 * 2.8 * 9.8 * t2 * t2 / 1000;
+                    this.fuel = 20 - t2 * 0.8;
+                    this.attitude = 90 - t2 * 1.5;
+                } else {
+                    this.thrust = 60;
+                    this.acceleration = 1.5;
+                    const t3 = t - 30;
+                    this.velocity = 910 + t3 * 15;
+                    this.altitude = 16.4 + 910 * t3 / 1000 + 0.5 * 1.5 * 9.8 * t3 * t3 / 1000;
+                    this.fuel = Math.max(0, 4 - t3 * 0.2);
+                    this.attitude = Math.max(0, 60 - t3 * 2);
+                }
+
+                this.pressureExt = 101.3 * Math.exp(-this.altitude / 8.5);
+                this.temperature = 22 - this.altitude * 0.15;
+            }
+
+            updateUI() {
+                document.getElementById('missionTime').textContent =
+                    `T+${Math.floor(this.time / 60).toString().padStart(2, '0')}:${Math.floor(this.time % 60).toString().padStart(2, '0')}`;
+                document.getElementById('velocity').innerHTML =
+                    `${Math.round(this.velocity)}<span class="param-unit">m/s</span>`;
+                document.getElementById('altitude').innerHTML =
+                    `${this.altitude.toFixed(1)}<span class="param-unit">km</span>`;
+                document.getElementById('acceleration').innerHTML =
+                    `${this.acceleration.toFixed(1)}<span class="param-unit">g</span>`;
+                document.getElementById('attitude').innerHTML =
+                    `${Math.round(this.attitude)}<span class="param-unit">°</span>`;
+                document.getElementById('thrust').textContent = Math.round(this.thrust);
+                document.getElementById('fuel').innerHTML =
+                    `${Math.max(0, this.fuel).toFixed(1)}<span class="param-unit">%</span>`;
+                document.getElementById('pressureInt').innerHTML =
+                    `101.3<span class="param-unit">kPa</span>`;
+                document.getElementById('pressureExt').innerHTML =
+                    `${this.pressureExt.toFixed(1)}<span class="param-unit">kPa</span>`;
+                document.getElementById('temperature').innerHTML =
+                    `${Math.round(this.temperature)}<span class="param-unit">°C</span>`;
+
+                const engineStatus = document.getElementById('engineStatus');
+                if (this.thrust > 80) engineStatus.className = 'status-indicator status-nominal';
+                else if (this.thrust > 50) engineStatus.className = 'status-indicator status-warning';
+                else engineStatus.className = 'status-indicator status-critical';
+
+                if (this.time < 10) document.getElementById('statusMsg').textContent = '第一级燃烧';
+                else if (this.time < 30) document.getElementById('statusMsg').textContent = '第二级分离';
+                else document.getElementById('statusMsg').textContent = '轨道插入';
+            }
+
+            render2DCameras() {
+                this.renderCamera2();
+                this.renderCamera3();
+                this.renderCamera4();
+            }
+
+            renderCamera2() {
+                const { ctx, canvas } = this.cameras2d[0];
+                const w = canvas.width, h = canvas.height;
+
+                ctx.fillStyle = '#0a0e27';
+                ctx.fillRect(0, 0, w, h);
+
+                const horizonY = h * 0.6 + this.altitude * 2;
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(0, horizonY, w, h - horizonY);
+
+                const rocketX = w * 0.5;
+                const rocketY = h * 0.5;
+                const angle = (90 - this.attitude) * Math.PI / 180;
+
+                ctx.save();
+                ctx.translate(rocketX, rocketY);
+                ctx.rotate(angle);
+
+                ctx.fillStyle = '#e2e8f0';
+                ctx.fillRect(-15, -60, 30, 120);
+
+                if (this.thrust > 0) {
+                    const flameLength = this.thrust * 1.5;
+                    const gradient = ctx.createLinearGradient(0, 60, 0, 60 + flameLength);
+                    gradient.addColorStop(0, '#fbbf24');
+                    gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(-15, 60, 30, flameLength);
+                }
+
+                ctx.restore();
+
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(rocketX, rocketY);
+                ctx.lineTo(rocketX + Math.sin(angle) * this.velocity * 0.2,
+                          rocketY - Math.cos(angle) * this.velocity * 0.2);
+                ctx.stroke();
+            }
+
+            renderCamera3() {
+                const { ctx, canvas } = this.cameras2d[1];
+                const w = canvas.width, h = canvas.height;
+
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(0, 0, w, h);
+
+                const centerX = w / 2, centerY = h / 2;
+
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(centerX - 150, centerY - 100, 300, 200);
+
+                ctx.fillStyle = '#10b981';
+                ctx.font = 'bold 40px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${Math.round(this.velocity)} m/s`, centerX, centerY - 20);
+
+                ctx.fillStyle = '#3b82f6';
+                ctx.font = 'bold 30px monospace';
+                ctx.fillText(`${this.altitude.toFixed(1)} km`, centerX, centerY + 30);
+
+                for (let i = 0; i < 4; i++) {
+                    ctx.fillStyle = this.thrust > 50 ? '#10b981' : '#ef4444';
+                    ctx.beginPath();
+                    ctx.arc(centerX - 180 + i * 120, centerY + 120, 15, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                if (this.thrust > 80) {
+                    ctx.save();
+                    ctx.translate(Math.random() * 4 - 2, Math.random() * 4 - 2);
+                    ctx.restore();
+                }
+            }
+
+            renderCamera4() {
+                const { ctx, canvas } = this.cameras2d[2];
+                const w = canvas.width, h = canvas.height;
+
+                ctx.fillStyle = '#0a0e27';
+                ctx.fillRect(0, 0, w, h);
+
+                const centerX = w / 2, centerY = h / 2;
+
+                ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
+                ctx.lineWidth = 2;
+                for (let i = 1; i <= 4; i++) {
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, i * 100, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                const scanAngle = (this.time * 2) % (Math.PI * 2);
+                ctx.strokeStyle = 'rgba(59, 130, 246, 0.6)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(centerX + Math.cos(scanAngle) * 400, centerY + Math.sin(scanAngle) * 400);
+                ctx.stroke();
+
+                const rocketAngle = (90 - this.attitude) * Math.PI / 180;
+                const rocketDist = Math.min(this.altitude * 3, 380);
+                const rocketX = centerX + Math.cos(rocketAngle) * rocketDist;
+                const rocketY = centerY - Math.sin(rocketAngle) * rocketDist;
+
+                ctx.fillStyle = '#f97316';
+                ctx.beginPath();
+                ctx.arc(rocketX, rocketY, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = 'rgba(249, 115, 22, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(rocketX, rocketY);
+                ctx.stroke();
+
+                ctx.fillStyle = '#3b82f6';
+                ctx.font = 'bold 20px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${this.altitude.toFixed(1)} km`, centerX, h - 40);
+                ctx.fillText(`${Math.round(this.attitude)}°`, centerX, h - 10);
+            }
+
+            complete() {
+                this.state = 'completed';
+                document.getElementById('launchBtn').className = 'launch-button completed';
+                document.getElementById('launchBtn').textContent = '任务完成';
+                document.getElementById('statusMsg').textContent = '进入轨道';
+            }
+        }
+
+        const rocket = new RocketLaunch();
+    </script>
+</body>
+</html>

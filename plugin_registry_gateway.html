@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plugin Registry Gateway</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #1a1f3a;
+            --bg-card: rgba(26, 31, 58, 0.6);
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --border-color: rgba(148, 163, 184, 0.1);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1729 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0;
+        }
+
+        .nav-tab {
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+            border-bottom: 2px solid transparent;
+            position: relative;
+            bottom: -1px;
+        }
+
+        .nav-tab:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-tab.active {
+            color: var(--accent-blue);
+            border-bottom-color: var(--accent-blue);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge.success {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .badge.warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .badge.danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(10, 14, 39, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(26, 31, 58, 0.8);
+        }
+
+        .table-container {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: rgba(10, 14, 39, 0.5);
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 1rem;
+            font-size: 0.875rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-indicator.online {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        .status-indicator.offline {
+            background: var(--danger);
+            box-shadow: 0 0 8px var(--danger);
+        }
+
+        .code-block {
+            background: rgba(10, 14, 39, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.75rem;
+            overflow-x: auto;
+            color: #94a3b8;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .icon-btn {
+            padding: 0.5rem;
+            background: none;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .icon-btn:hover {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-tabs {
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Plugin Registry Gateway</h1>
+            <p class="subtitle">管理和监控插件注册中心网关</p>
+        </header>
+
+        <nav class="nav-tabs">
+            <button class="nav-tab active">概览</button>
+            <button class="nav-tab">插件管理</button>
+            <button class="nav-tab">网关配置</button>
+            <button class="nav-tab">监控日志</button>
+            <button class="nav-tab">设置</button>
+        </nav>
+
+        <div class="grid">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">系统状态</h3>
+                    <span class="badge success">运行中</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">网关版本</span>
+                    <span class="stat-value">v2.4.1</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">运行时间</span>
+                    <span class="stat-value">15天 7小时</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">总请求数</span>
+                    <span class="stat-value">1,234,567</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">活跃连接</span>
+                    <span class="stat-value">342</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">插件统计</h3>
+                    <span class="badge success">24 个</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">已注册插件</span>
+                    <span class="stat-value">24</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">活跃插件</span>
+                    <span class="stat-value">21</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">待审核</span>
+                    <span class="stat-value">2</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">已禁用</span>
+                    <span class="stat-value">1</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">性能指标</h3>
+                    <span class="badge success">健康</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">平均响应时间</span>
+                    <span class="stat-value">45ms</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">成功率</span>
+                    <span class="stat-value">99.8%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">CPU 使用率</span>
+                    <span class="stat-value">23%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">内存使用</span>
+                    <span class="stat-value">1.2GB / 4GB</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-header">
+                <h3 class="card-title">注册新插件</h3>
+            </div>
+            <form>
+                <div class="form-group">
+                    <label class="form-label">插件名称</label>
+                    <input type="text" class="form-input" placeholder="输入插件名称">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">插件 ID</label>
+                    <input type="text" class="form-input" placeholder="例如: com.example.plugin">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">版本号</label>
+                    <input type="text" class="form-input" placeholder="例如: 1.0.0">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">端点 URL</label>
+                    <input type="text" class="form-input" placeholder="https://api.example.com/plugin">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">描述</label>
+                    <textarea class="form-textarea" placeholder="插件功能描述"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">配置 (JSON)</label>
+                    <textarea class="form-textarea" placeholder='{"key": "value"}'></textarea>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button type="submit" class="btn btn-primary">注册插件</button>
+                    <button type="button" class="btn btn-secondary">重置</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>状态</th>
+                        <th>插件名称</th>
+                        <th>插件 ID</th>
+                        <th>版本</th>
+                        <th>请求数</th>
+                        <th>最后活跃</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="status-indicator online"></span>在线</td>
+                        <td>认证服务</td>
+                        <td>com.auth.service</td>
+                        <td>2.1.0</td>
+                        <td>45,231</td>
+                        <td>2分钟前</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="icon-btn" title="编辑">✏️</button>
+                                <button class="icon-btn" title="查看">👁️</button>
+                                <button class="icon-btn" title="删除">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-indicator online"></span>在线</td>
+                        <td>数据分析</td>
+                        <td>com.analytics.core</td>
+                        <td>1.5.2</td>
+                        <td>32,104</td>
+                        <td>5分钟前</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="icon-btn" title="编辑">✏️</button>
+                                <button class="icon-btn" title="查看">👁️</button>
+                                <button class="icon-btn" title="删除">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-indicator online"></span>在线</td>
+                        <td>支付网关</td>
+                        <td>com.payment.gateway</td>
+                        <td>3.0.1</td>
+                        <td>28,567</td>
+                        <td>1分钟前</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="icon-btn" title="编辑">✏️</button>
+                                <button class="icon-btn" title="查看">👁️</button>
+                                <button class="icon-btn" title="删除">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-indicator offline"></span>离线</td>
+                        <td>通知服务</td>
+                        <td>com.notification.service</td>
+                        <td>1.2.0</td>
+                        <td>15,892</td>
+                        <td>2小时前</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="icon-btn" title="编辑">✏️</button>
+                                <button class="icon-btn" title="查看">👁️</button>
+                                <button class="icon-btn" title="删除">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-indicator online"></span>在线</td>
+                        <td>文件存储</td>
+                        <td>com.storage.files</td>
+                        <td>2.3.4</td>
+                        <td>67,234</td>
+                        <td>刚刚</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="icon-btn" title="编辑">✏️</button>
+                                <button class="icon-btn" title="查看">👁️</button>
+                                <button class="icon-btn" title="删除">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Form submission
+        document.querySelector('form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('插件注册功能演示 - 实际项目中需要连接后端 API');
+        });
+
+        // Icon button actions
+        document.querySelectorAll('.icon-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const action = this.getAttribute('title');
+                alert(`${action}功能演示`);
+            });
+        });
+    </script>
+</body>
+</html>
