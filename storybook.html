@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>龟兔赛跑 - 沉浸式全屏绘本</title>
+    <!-- 引入 RoughJS 绘制手绘风格插图 -->
+    <script src="https://cdn.jsdelivr.net/npm/roughjs@4.5.2/bundled/rough.js"></script>
+    <style>
+        :root {
+            --paper-color: #fdf6e3;
+            --ink-color: #4b3d33;
+            --accent-color: #8c7b6c;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+
+        body {
+            background-color: var(--paper-color);
+            font-family: 'Kaiti', 'STKaiti', cursive, serif;
+            color: var(--ink-color);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* 移除之前的小容器，直接铺满 */
+        #storybook {
+            width: 100vw;
+            height: 100vh;
+            background: var(--paper-color);
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 增加纹理感 */
+        #storybook::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('https://www.transparenttextures.com/patterns/felt.png');
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .page { 
+            display: none; 
+            height: 100%; 
+            width: 100%;
+            flex-direction: column; 
+            padding: 2vh 3vw;
+        }
+        .page.active { display: flex; animation: fadeIn 0.6s ease-in-out; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(1.02); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        h1 { 
+            text-align: center; 
+            font-size: 4vh; 
+            margin-bottom: 2vh; 
+            letter-spacing: 0.5rem;
+            border-bottom: 3px double var(--accent-color);
+            padding-bottom: 1vh;
+            color: var(--ink-color);
+            z-index: 3;
+            line-height: 1.8; /* 增加行高以容纳拼音 */
+        }
+
+        /* 全屏网格布局 */
+        .panels-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            grid-template-rows: 1fr 1fr;
+            grid-gap: 20px; 
+            flex-grow: 1;
+            padding-bottom: 4vh;
+            z-index: 3;
+        }
+
+        .panel {
+            border: 3px solid var(--ink-color);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            box-shadow: 10px 10px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.3s;
+        }
+
+        .panel:hover {
+            transform: translateY(-5px);
+        }
+
+        .panel.large {
+            grid-column: span 2;
+        }
+
+        .illustration-container {
+            width: 100%; 
+            flex-grow: 1; /* 自动填充剩余空间 */
+            background: #fff;
+            overflow: hidden;
+            position: relative;
+            border-bottom: 2px solid var(--ink-color);
+        }
+
+        canvas { display: block; }
+
+        .caption { 
+            text-align: center; 
+            font-size: 2.8vh; 
+            line-height: 2.2; /* 增加行高以容纳拼音 */
+            padding: 10px 25px;
+            background: var(--paper-color);
+            color: var(--ink-color);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 拼音样式 */
+        ruby {
+            ruby-align: center;
+        }
+        rt {
+            font-size: 0.4em; /* 拼音大小 */
+            color: var(--accent-color);
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        /* 交互区域 */
+        .nav-zone {
+            position: fixed; top: 0; height: 100vh; width: 15vw;
+            z-index: 1000; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .nav-zone:hover { opacity: 0.3; background: linear-gradient(to right, rgba(75, 61, 51, 0.2), transparent); }
+        .nav-zone.right:hover { background: linear-gradient(to left, rgba(75, 61, 51, 0.2), transparent); }
+        .nav-zone span { font-size: 8vh; color: var(--ink-color); }
+        .nav-zone.left { left: 0; }
+        .nav-zone.right { right: 0; }
+
+        .page-counter { 
+            position: absolute; 
+            bottom: 2vh; 
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--accent-color); 
+            font-weight: bold; 
+            font-size: 2.2vh;
+            z-index: 4;
+            background: rgba(253, 246, 227, 0.8);
+            padding: 5px 20px;
+            border-radius: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="storybook">
+        <div id="pages-container" style="height: 100%;"></div>
+        <div class="page-counter" id="counter">1 / 8</div>
+    </div>
+
+    <div class="nav-zone left" onclick="prevPage()"><span>&lt;</span></div>
+    <div class="nav-zone right" onclick="nextPage()"><span>&gt;</span></div>
+
+    <script>
+        const storyData = [
+            {
+                t: "第一章：傲气凌人的兔子",
+                tp: "dì yī zhāng ào qì líng rén de tù zi",
+                c1: "在古老的森林里，兔子以速度闻名。",
+                cp1: "zài gǔ lǎo de sēn lín lǐ tù zi yǐ sù dù wén míng",
+                c2: "他总是飞快地穿过灌丛，惊起一片飞鸟。",
+                cp2: "tā zǒng shì fēi kuài de chuān guò guàn cóng jīng qǐ yī piàn fēi niǎo",
+                c3: "“谁敢跟我比试比试？”他对着天空傲慢地喊道。",
+                cp3: "shéi gǎn gēn wǒ bǐ shì bǐ shì tā duì zhe tiān kōng ào màn de hǎn dào",
+                i1: "hare_posing", i2: "hare_run", i3: "hare_boast"
+            },
+            {
+                t: "第二章：池塘边的偶遇",
+                tp: "dì èr zhāng chí táng biān de ǒu yù",
+                c1: "在静谧的池塘边，兔子遇到了正在喝水的乌龟。",
+                cp1: "zài jìng mì de chí táng biān tù zi yù dào le zhèng zài hē shuǐ de wū guī",
+                c2: "“喂，慢吞吞的家伙，你需要一年才能走回家吧？”",
+                cp2: "wèi màn tūn tūn de jiā huo nǐ xū yào yī nián cái néng zǒu huí jiā ba",
+                c3: "乌龟沉默地看着他，眼中闪烁着智慧的光芒。",
+                cp3: "wū guī chén mò de kàn zhe tā yǎn zhōng shǎn shuò zhe zhì huì de guāng máng",
+                i1: "both_pond", i2: "hare_mock", i3: "tortoise_stare"
+            },
+            {
+                t: "第三章：不可能的挑战",
+                tp: "dì sān zhāng bù kě néng de tiǎo zhàn",
+                c1: "“我挑战你，”乌龟放下水杯，平静地说。",
+                cp1: "wǒ tiǎo zhàn nǐ wū guī fàng xià shuǐ bēi píng jìng de shuō",
+                c2: "兔子在大树下笑得直打滚：“这简直是本年度最好笑的笑话！”",
+                cp2: "tù zi zài dà shù xià xiào de zhí dǎ gǔn zhè jiǎn zhí shì běn nián dù zuì hǎo xiào de xiào hua",
+                c3: "森林里的动物们都聚集过来，议论纷纷。",
+                cp3: "sēn lín lǐ de dòng wù men dōu jù jí guò lái yì lùn fēn fēn",
+                i1: "tortoise_brave", i2: "hare_laugh", i3: "forest_crowd"
+            },
+            {
+                t: "第四章：比赛鸣哨",
+                tp: "dì sì zhāng bǐ sài míng shào",
+                c1: "老橡树作为起点，松鼠挥下了神圣的红旗。",
+                cp1: "lǎo xiàng shù zuò wéi qǐ diǎn sōng shǔ huī xià le shén shèng de hóng qí",
+                c2: "兔子像离弦之箭般冲出，瞬间消失在林间尽头。",
+                cp2: "tù zi xiàng lí xián zhī jiàn bān chōng chū shùn jiān xiāo shī zài lín jiān jìn tóu",
+                c3: "乌龟则背着重重的壳，一步一步，缓慢而坚定地前进。",
+                cp3: "wū guī zé bēi zhe zhòng zhòng de ké yī bù yī bù huǎn màn ér jiān dìng de qián jìn",
+                i1: "start_line", i2: "hare_dash", i3: "tortoise_start"
+            },
+            {
+                t: "第五章：致命的轻敌",
+                tp: "dì wǔ zhāng zhì mìng de qīng dí",
+                c1: "跑了一大段路后，兔子回头已看不见任何对手。",
+                cp1: "pǎo le yī dà duàn lù hòu tù zi huí tóu yǐ kàn bù jiàn rèn hé duì shǒu",
+                c2: "路边出现了一片诱人的胡萝卜地，他决定停下来大餐一顿。",
+                cp2: "lù biān chū xiàn le yī piàn yòu rén de hú luó bo dì tā jué dìng tíng xià lái dà cān yī dùn",
+                c3: "“反正那家伙还得爬很久呢。”他嘴里塞满了脆嫩的萝卜。",
+                cp3: "fǎn zhèng nà jiā huo hái děi pá hěn jiǔ ne tā zuǐ lǐ sāi mǎn le cuì nèn de luó bo",
+                i1: "hare_ahead", i2: "carrot_patch", i3: "hare_eat"
+            },
+            {
+                t: "第六章：梦中的奖杯",
+                tp: "dì liù zhāng mèng zhōng de jiǎng bēi",
+                c1: "午后的阳光变得极为慵懒，兔子感到眼皮沉重。",
+                cp1: "wǔ hòu de yáng guāng biàn de jí wéi yōng lǎn tù zi gǎn dào yǎn pí chén zhòng",
+                c2: "他找了棵大树，靠在阴凉的树根上陷入了梦乡。",
+                cp2: "tā zhǎo le kē dà shù kào zài yīn liáng de shù gēn shàng xiàn rù le mèng xiāng",
+                c3: "在梦里，他正站在领奖台上接受整座森林的欢呼。",
+                cp3: "zài mèng lǐ tā zhèng zhàn zài lǐng jiǎng tái shàng jiē shòu zhěng zuò sēn lín de huān hū",
+                i1: "sun_high", i2: "hare_sleep", i3: "dream"
+            },
+            {
+                t: "第七章：坚韧的力量",
+                tp: "dì qī zhāng jiān rèn de lì liàng",
+                c1: "虽然每一步都很费力，但乌龟从未想过要停歇。",
+                cp1: "suī rán měi yī bù dōu hěn fèi lì dàn wū guī cóng wèi xiǎng guò yào tíng xiē",
+                c2: "他悄无声息地路过那个鼾声如雷的家伙，继续向终点爬去。",
+                cp2: "tā qiāo wú shēng xī de lù guò nà gè hān shēng rú léi de jiā huo jì xù xiàng zhōng diǎn pá qù",
+                c3: "汗水滴落在泥土里，他在夕阳下看到了远处的红线。",
+                cp3: "hàn shuǐ dī luò zài ní tǔ lǐ tā zài xī yáng xià kàn dào le yuǎn chù de hóng xiàn",
+                i1: "tortoise_effort", i2: "tortoise_pass", i3: "final_stretch"
+            },
+            {
+                t: "第八章：真正的英雄",
+                tp: "dì bā zhāng zhēn zhèng de yīng xióng",
+                c1: "兔子猛然惊醒奔向终点，却发现乌龟已经跨过了红线。",
+                cp1: "tù zi měng rán jīng xǐng bēn xiàng zhōng diǎn què fā xiàn wū guī yǐ jīng kuà guò le hóng xiàn",
+                c2: "森林里响起了雷鸣般的掌声，这是给坚韧不拔者的最高荣誉。",
+                cp2: "sēn lín lǐ xiǎng qǐ le léi míng bān de zhǎng shēng zhè shì gěi jiān rèn bù bá zhě de zuì gāo róng yù",
+                c3: "兔子低下了头，终于懂得了什么叫做“欲速则不达”。",
+                cp3: "tù zi dī xià le tóu zhōng yú dǒng dé le shén me jiào zuò yù sù zé bù dá",
+                i1: "hare_regret", i2: "finish_line", i3: "victory"
+            }
+        ];
+
+        let currentPage = 1;
+        const totalPages = 8;
+
+        // --- 辅助函数：将文本和拼音合并为 Ruby 标签 ---
+        function toRuby(text, pinyinStr) {
+            if (!pinyinStr) return text;
+            const chars = Array.from(text);
+            const pinyinList = pinyinStr.split(' ');
+            let result = '';
+            let pIdx = 0;
+            for (const char of chars) {
+                if (/[\u4e00-\u9fa5]/.test(char)) {
+                    result += `<ruby>${char}<rt>${pinyinList[pIdx] || ''}</rt></ruby>`;
+                    pIdx++;
+                } else {
+                    result += char;
+                }
+            }
+            return result;
+        }
+
+        // --- 生成 HTML 结构 ---
+        const pagesContainer = document.getElementById('pages-container');
+        storyData.forEach((data, i) => {
+            const pIdx = i + 1;
+            const pageDiv = document.createElement('div');
+            pageDiv.className = `page ${pIdx === 1 ? 'active' : ''}`;
+            pageDiv.id = `page-${pIdx}`;
+            pageDiv.innerHTML = `
+                <h1>${toRuby(data.t, data.tp)}</h1>
+                <div class="panels-grid">
+                    <div class="panel"><div class="illustration-container" id="pixi-${pIdx}-1"></div><p class="caption">${toRuby(data.c1, data.cp1)}</p></div>
+                    <div class="panel"><div class="illustration-container" id="pixi-${pIdx}-2"></div><p class="caption">${toRuby(data.c2, data.cp2)}</p></div>
+                    <div class="panel large"><div class="illustration-container" id="pixi-${pIdx}-3"></div><p class="caption">${toRuby(data.c3, data.cp3)}</p></div>
+                </div>
+            `;
+            pagesContainer.appendChild(pageDiv);
+        });
+
+        // --- RoughJS 响应式绘图库 ---
+        const RoughLib = {
+            colors: {
+                hare: '#ffffff', hareEar: '#ffd1dc', tortoise: '#6a994e', tortoiseShell: '#386641',
+                ground: '#d8e2dc', sky: '#caf0f8', tree: '#582f0e', leaf: '#386641',
+                carrot: '#e76f51', rock: '#adb5bd', flower: '#f28482', sun: '#ffb703', lake: '#90e0ef',
+                ink: '#4b3d33', grass: '#a7c957'
+            },
+
+            // 基础：绘制云朵
+            drawCloud: (rc, x, y, size) => {
+                rc.circle(x, y, size, { fill: '#fff', fillStyle: 'solid', stroke: 'none' });
+                rc.circle(x + size*0.6, y + size*0.2, size*0.7, { fill: '#fff', fillStyle: 'solid', stroke: 'none' });
+                rc.circle(x - size*0.6, y + size*0.2, size*0.7, { fill: '#fff', fillStyle: 'solid', stroke: 'none' });
+            },
+
+            // 基础：绘制精细的树
+            drawTree: (rc, x, y, h) => {
+                const trunkW = h * 0.15;
+                rc.rectangle(x - trunkW/2, y, trunkW, h, { fill: RoughLib.colors.tree, fillStyle: 'hachure', hachureAngle: 90 });
+                // 树冠多层
+                rc.circle(x, y, h * 0.6, { fill: RoughLib.colors.leaf, fillStyle: 'zigzag', hachureGap: 4 });
+                rc.circle(x - h*0.3, y + h*0.2, h * 0.4, { fill: RoughLib.colors.leaf, fillStyle: 'zigzag' });
+                rc.circle(x + h*0.3, y + h*0.2, h * 0.4, { fill: RoughLib.colors.leaf, fillStyle: 'zigzag' });
+            },
+
+            // 绘制兔子 - 更加灵动，耳朵更长
+            drawHare: (rc, x, y, s, pose = 'normal') => {
+                const options = { stroke: RoughLib.colors.ink, strokeWidth: 1.2 };
+                const fillOptions = { ...options, fill: RoughLib.colors.hare, fillStyle: 'solid' };
+                
+                // 身体 (倾斜感)
+                const bodyAngle = pose === 'run' ? -0.2 : 0;
+                rc.ellipse(x, y, s*0.7, s*0.4, { ...fillOptions });
+                
+                // 头部 (长脸)
+                const headX = x + s*0.35;
+                const headY = y - s*0.25;
+                rc.ellipse(headX, headY, s*0.3, s*0.25, { ...fillOptions });
+                
+                // 耳朵 (更长更细)
+                const earLength = s*0.6;
+                const earWidth = s*0.12;
+                if (pose === 'sleep') {
+                    rc.ellipse(headX - s*0.1, headY - s*0.1, earLength, earWidth, { ...fillOptions, hachureAngle: 45 });
+                    rc.ellipse(headX - s*0.15, headY, earLength, earWidth, { ...fillOptions, hachureAngle: 60 });
+                } else {
+                    rc.ellipse(headX, headY - s*0.4, earWidth, earLength, { ...fillOptions });
+                    rc.ellipse(headX + s*0.1, headY - s*0.35, earWidth, earLength, { ...fillOptions });
+                }
+
+                // 眼睛
+                if (pose === 'sleep') {
+                    rc.line(headX + s*0.05, headY, headX + s*0.15, headY, options);
+                } else {
+                    rc.circle(headX + s*0.1, headY - s*0.05, s*0.04, { fill: RoughLib.colors.ink, fillStyle: 'solid' });
+                }
+
+                // 腿
+                if (pose === 'run') {
+                    rc.line(x - s*0.2, y + s*0.1, x - s*0.5, y + s*0.3, options); // 后腿伸展
+                    rc.line(x + s*0.1, y + s*0.1, x + s*0.4, y + s*0.3, options); // 前腿迈出
+                } else {
+                    rc.line(x - s*0.2, y + s*0.2, x - s*0.2, y + s*0.4, options);
+                    rc.line(x + s*0.1, y + s*0.2, x + s*0.1, y + s*0.4, options);
+                }
+
+                // 尾巴
+                rc.circle(x - s*0.35, y, s*0.1, { ...fillOptions });
+            },
+
+            // 绘制乌龟 - 强化龟壳样式与纹理
+            drawTortoise: (rc, x, y, s, pose = 'normal') => {
+                const ink = RoughLib.colors.ink;
+                const shellColor = RoughLib.colors.tortoiseShell;
+                const skinColor = RoughLib.colors.tortoise;
+                const options = { stroke: ink, strokeWidth: 1.5 };
+                
+                // 1. 腿 (放在壳后面)
+                const legOptions = { fill: skinColor, fillStyle: 'solid', stroke: ink, strokeWidth: 1 };
+                rc.ellipse(x - s*0.3, y + s*0.25, s*0.2, s*0.25, legOptions);
+                rc.ellipse(x + s*0.2, y + s*0.25, s*0.2, s*0.25, legOptions);
+
+                // 2. 龟壳主体 (高拱形 Dome)
+                // 使用路径绘制一个半椭圆底部的拱形
+                rc.path(`M ${x - s*0.6} ${y + s*0.2} A ${s*0.6} ${s*0.5} 0 0 1 ${x + s*0.6} ${y + s*0.2} L ${x + s*0.5} ${y + s*0.25} L ${x - s*0.5} ${y + s*0.25} Z`, {
+                    fill: shellColor,
+                    fillStyle: 'zigzag',
+                    hachureGap: 3,
+                    stroke: ink,
+                    strokeWidth: 2
+                });
+
+                // 3. 龟壳纹路 (精细的六角形背甲 Scutes)
+                const scuteFill = { stroke: ink, strokeWidth: 0.8, fill: '#4a6b33', fillStyle: 'hachure', hachureAngle: 60, hachureGap: 8 };
+                // 中心甲片
+                rc.polygon([[x-s*0.15, y-s*0.1], [x, y-s*0.25], [x+s*0.15, y-s*0.1], [x+s*0.15, y+s*0.05], [x, y+s*0.15], [x-s*0.15, y+s*0.05]], scuteFill);
+                // 左侧甲片
+                rc.polygon([[x-s*0.45, y], [x-s*0.3, y-s*0.15], [x-s*0.15, y-s*0.1], [x-s*0.15, y+s*0.05], [x-s*0.3, y+s*0.15]], scuteFill);
+                // 右侧甲片
+                rc.polygon([[x+s*0.45, y], [x+s*0.3, y-s*0.15], [x+s*0.15, y-s*0.1], [x+s*0.15, y+s*0.05], [x+s*0.3, y+s*0.15]], scuteFill);
+
+                // 4. 头部与颈部
+                const headY = pose === 'effort' ? y + s*0.18 : y + s*0.1;
+                const neckX = x + s*0.4;
+                // 脖子
+                rc.line(neckX, y + s*0.15, x + s*0.6, headY, { ...options, strokeWidth: 2 });
+                // 头
+                rc.ellipse(x + s*0.7, headY, s*0.35, s*0.25, { fill: skinColor, fillStyle: 'solid', stroke: ink });
+                // 眼睛
+                rc.circle(x + s*0.78, headY - s*0.05, s*0.04, { fill: ink, fillStyle: 'solid', stroke: 'none' });
+                // 嘴巴 (微小的弧线)
+                rc.arc(x + s + 0.8, headY + s*0.05, s*0.1, s*0.1, 0, Math.PI/2, false, { stroke: ink });
+
+                if (pose === 'effort') {
+                    // 汗水气泡
+                    rc.circle(x + s*0.7, headY - s*0.3, s*0.05, { fill: RoughLib.colors.lake, fillStyle: 'solid', stroke: 'none' });
+                    rc.circle(x + s*0.75, headY - s*0.35, s*0.03, { fill: RoughLib.colors.lake, fillStyle: 'solid', stroke: 'none' });
+                }
+            },
+
+            drawBackground: (rc, w, h, type) => {
+                // 天空
+                rc.rectangle(0, 0, w, h*0.6, { fill: RoughLib.colors.sky, fillStyle: 'hachure', stroke: 'none', hachureAngle: 120 });
+                // 地面
+                rc.rectangle(0, h*0.6, w, h*0.4, { fill: RoughLib.colors.ground, fillStyle: 'hachure', stroke: 'none' });
+                
+                // 云
+                for(let i=0; i<3; i++) RoughLib.drawCloud(rc, w*0.2 + i*w*0.3, h*(0.1 + Math.random()*0.1), 30 + Math.random()*20);
+                
+                // 草丛和花
+                for(let i=0; i<15; i++) {
+                    const gx = Math.random() * w;
+                    const gy = h*0.65 + Math.random()*h*0.3;
+                    rc.line(gx, gy, gx + (Math.random()-0.5)*10, gy - 15, { stroke: RoughLib.colors.grass });
+                    if (Math.random() > 0.8) rc.circle(gx, gy - 15, 5, { fill: RoughLib.colors.flower, fillStyle: 'solid', stroke: 'none' });
+                }
+
+                if (type === 'lake') {
+                    rc.ellipse(w*0.7, h*0.85, w*0.4, h*0.2, { fill: RoughLib.colors.lake, fillStyle: 'solid', stroke: RoughLib.colors.ink });
+                }
+                
+                if (type === 'forest') {
+                    for(let i=0; i<4; i++) RoughLib.drawTree(rc, w*0.1 + i*w*0.25, h*0.45, h*0.3);
+                }
+            }
+        };
+
+        function initPageRough(pageIdx) {
+            clearCanvases(pageIdx);
+            const pageData = storyData[pageIdx - 1];
+
+            [1, 2, 3].forEach(subIdx => {
+                const containerId = `pixi-${pageIdx}-${subIdx}`;
+                const container = document.getElementById(containerId);
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                container.appendChild(canvas);
+                
+                const rc = rough.canvas(canvas);
+                const sceneKey = pageData[`i${subIdx}`];
+                const bgType = (pageIdx === 2) ? 'lake' : 'forest';
+                
+                RoughLib.drawBackground(rc, width, height, bgType);
+
+                const charSize = Math.min(width, height) * 0.2;
+                const midX = width * 0.5;
+                const midY = height * 0.75;
+
+                switch(sceneKey) {
+                    case 'hare_posing':
+                        RoughLib.drawHare(rc, midX, midY, charSize);
+                        break;
+                    case 'hare_run':
+                        RoughLib.drawHare(rc, midX, midY, charSize, 'run');
+                        // 速度线
+                        for(let i=0; i<5; i++) rc.line(midX - charSize, midY - charSize*0.5 + i*10, midX - charSize*1.5, midY - charSize*0.5 + i*10, { stroke: '#ccc' });
+                        break;
+                    case 'hare_boast':
+                        RoughLib.drawHare(rc, midX, midY, charSize);
+                        rc.path(`M ${midX+charSize*0.5} ${midY-charSize*0.5} Q ${midX+charSize} ${midY-charSize} ${midX+charSize*0.5} ${midY-charSize*1.5}`, { stroke: RoughLib.colors.ink });
+                        break;
+                    case 'both_pond':
+                        RoughLib.drawHare(rc, width*0.3, midY, charSize*0.8);
+                        RoughLib.drawTortoise(rc, width*0.6, midY, charSize*0.8);
+                        break;
+                    case 'hare_mock':
+                        RoughLib.drawHare(rc, width*0.4, midY, charSize);
+                        rc.circle(width*0.45, midY-charSize*0.4, charSize*0.2, { fill: '#fff' }); // 气泡
+                        break;
+                    case 'tortoise_stare':
+                        RoughLib.drawTortoise(rc, midX, midY, charSize);
+                        break;
+                    case 'tortoise_brave':
+                        RoughLib.drawTortoise(rc, midX, midY, charSize, 'effort');
+                        break;
+                    case 'hare_laugh':
+                        RoughLib.drawHare(rc, midX, midY + charSize*0.2, charSize, 'sleep'); // 躺着
+                        break;
+                    case 'forest_crowd':
+                        for(let i=0; i<5; i++) rc.circle(width*0.2 + i*width*0.15, midY+charSize*0.2, charSize*0.3, { fill: '#ddd', fillStyle: 'hachure' });
+                        break;
+                    case 'start_line':
+                        rc.line(width*0.8, height*0.4, width*0.8, height*0.9, { stroke: RoughLib.colors.ink, strokeWidth: 3 });
+                        rc.rectangle(width*0.8, height*0.4, 40, 30, { fill: 'red', fillStyle: 'solid' });
+                        break;
+                    case 'hare_dash':
+                        RoughLib.drawHare(rc, width*0.8, midY, charSize, 'run');
+                        break;
+                    case 'tortoise_start':
+                        RoughLib.drawTortoise(rc, width*0.2, midY, charSize);
+                        break;
+                    case 'hare_ahead':
+                        RoughLib.drawHare(rc, width*0.9, midY, charSize, 'run');
+                        break;
+                    case 'carrot_patch':
+                        for(let i=0; i<6; i++) {
+                            const cx = width*0.2 + i*width*0.12;
+                            rc.ellipse(cx, midY + charSize*0.2, 15, 40, { fill: RoughLib.colors.carrot, fillStyle: 'solid' });
+                            rc.line(cx, midY, cx, midY - 20, { stroke: RoughLib.colors.leaf, strokeWidth: 3 });
+                        }
+                        RoughLib.drawHare(rc, width*0.5, midY, charSize);
+                        break;
+                    case 'hare_eat':
+                        RoughLib.drawHare(rc, midX, midY, charSize);
+                        rc.ellipse(midX+charSize*0.3, midY-charSize*0.1, 10, 25, { fill: RoughLib.colors.carrot, fillStyle: 'solid' });
+                        break;
+                    case 'sun_high':
+                        rc.circle(width*0.8, height*0.2, charSize, { fill: RoughLib.colors.sun, fillStyle: 'solid' });
+                        break;
+                    case 'hare_sleep':
+                        RoughLib.drawTree(rc, width*0.4, height*0.4, height*0.4);
+                        RoughLib.drawHare(rc, width*0.5, midY, charSize, 'sleep');
+                        break;
+                    case 'dream':
+                        rc.circle(midX, height*0.3, charSize*0.8, { stroke: '#ccc' });
+                        rc.rectangle(midX-15, height*0.3-15, 30, 30, { fill: 'gold', fillStyle: 'solid' });
+                        break;
+                    case 'tortoise_effort':
+                        RoughLib.drawTortoise(rc, midX, midY, charSize, 'effort');
+                        break;
+                    case 'tortoise_pass':
+                        RoughLib.drawHare(rc, width*0.3, midY, charSize, 'sleep');
+                        RoughLib.drawTortoise(rc, width*0.7, midY, charSize);
+                        break;
+                    case 'final_stretch':
+                        rc.rectangle(0, 0, width, height, { fill: 'orange', opacity: 0.2, stroke: 'none' });
+                        rc.line(width*0.9, height*0.4, width*0.9, height*0.9, { stroke: 'red', strokeWidth: 4 });
+                        RoughLib.drawTortoise(rc, width*0.7, midY, charSize);
+                        break;
+                    case 'hare_regret':
+                        RoughLib.drawHare(rc, midX, midY, charSize);
+                        rc.line(midX+charSize*0.2, midY-charSize*0.4, midX+charSize*0.2, midY-charSize*0.6, { stroke: RoughLib.colors.ink }); // 感叹号
+                        break;
+                    case 'finish_line':
+                        rc.line(width*0.2, height*0.4, width*0.2, height*0.9, { stroke: 'red', strokeWidth: 4 });
+                        RoughLib.drawTortoise(rc, width*0.3, midY, charSize);
+                        RoughLib.drawHare(rc, width*0.8, midY, charSize, 'run');
+                        break;
+                    case 'victory':
+                        RoughLib.drawTortoise(rc, midX, midY, charSize);
+                        for(let i=0; i<10; i++) rc.circle(Math.random()*width, Math.random()*height, 5, { fill: RoughLib.colors.flower, stroke: 'none' });
+                        break;
+                }
+            });
+        }
+
+        function clearCanvases(pageIdx) {
+            [1, 2, 3].forEach(subIdx => {
+                const container = document.getElementById(`pixi-${pageIdx}-${subIdx}`);
+                if (container) container.innerHTML = '';
+            });
+        }
+
+        function updatePage() {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`page-${currentPage}`).classList.add('active');
+            document.getElementById('counter').innerText = `${currentPage} / ${totalPages}`;
+            setTimeout(() => initPageRough(currentPage), 50);
+        }
+
+        function nextPage() { if (currentPage < totalPages) { currentPage++; updatePage(); } else shakeBook(); }
+        function prevPage() { if (currentPage > 1) { currentPage--; updatePage(); } else shakeBook(); }
+        function shakeBook() {
+            const b = document.getElementById('storybook');
+            b.style.transition = 'transform 0.1s';
+            b.style.transform = 'translateX(15px)';
+            setTimeout(() => { b.style.transform = 'translateX(-15px)'; setTimeout(() => b.style.transform = 'translateX(0)', 100); }, 100);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') nextPage();
+            if (e.key === 'ArrowLeft') prevPage();
+        });
+
+        window.onload = () => updatePage();
+    </script>
+</body>
+</html>

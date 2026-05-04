@@ -1,0 +1,2447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>水族馆</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { overflow: hidden; background: #000; cursor: crosshair; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const mouse = { x: -1000, y: -1000 };
+window.addEventListener('mousemove', (e) => {
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+});
+window.addEventListener('touchmove', (e) => {
+  if (e.touches.length > 0) {
+    mouse.x = e.touches[0].clientX;
+    mouse.y = e.touches[0].clientY;
+  }
+});
+window.addEventListener('touchend', () => {
+  mouse.x = -1000;
+  mouse.y = -1000;
+});
+
+function feed(x, y) {
+  const count = 6 + Math.floor(Math.random() * 6);
+  for (let i = 0; i < count; i++) {
+    foods.push(new FoodParticle(
+      x + (Math.random() - 0.5) * 30,
+      y + (Math.random() - 0.5) * 15
+    ));
+  }
+}
+
+canvas.addEventListener('mousedown', (e) => {
+  feed(e.clientX, e.clientY);
+});
+
+canvas.addEventListener('touchstart', (e) => {
+  if (e.touches.length > 0) {
+    feed(e.touches[0].clientX, e.touches[0].clientY);
+    // Prevent default to avoid double-triggering with click
+    if (e.cancelable) e.preventDefault();
+  }
+}, { passive: false });
+
+const fishColors = [
+  ['#FF6B6B','#FF8E8E','#FF4444'],
+  ['#4ECDC4','#6FECE4','#38B2A9'],
+  ['#FFE66D','#FFF176','#FDD835'],
+  ['#A78BFA','#C4B5FD','#7C3AED'],
+  ['#F97316','#FB923C','#EA580C'],
+  ['#EC4899','#F472B6','#DB2777'],
+  ['#06B6D4','#22D3EE','#0891B2'],
+  ['#84CC16','#A3E635','#65A30D'],
+  ['#E879F9','#F0ABFC','#C026D3'],
+  ['#FBBF24','#FCD34D','#D97706'],
+];
+
+// ==================== Fish Drawing Functions ====================
+
+function drawRoundFish(fish) {
+  const s = fish.size;
+  const c = fish.colorSet;
+  const tw = Math.sin(fish.tailPhase) * s * 0.3;
+
+  // Tail
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.7, 0);
+  ctx.lineTo(-s * 1.2, -s * 0.4 + tw * 0.5);
+  ctx.lineTo(-s * 1.2, s * 0.4 + tw * 0.5);
+  ctx.closePath();
+  ctx.fillStyle = c[2];
+  ctx.fill();
+
+  // Body - round
+  ctx.beginPath();
+  ctx.ellipse(0, 0, s * 0.9, s * 0.6, 0, 0, Math.PI * 2);
+  const g = ctx.createLinearGradient(0, -s * 0.6, 0, s * 0.6);
+  g.addColorStop(0, c[1]);
+  g.addColorStop(1, c[0]);
+  ctx.fillStyle = g;
+  ctx.fill();
+
+  // Belly highlight
+  ctx.beginPath();
+  ctx.ellipse(s * 0.05, s * 0.15, s * 0.55, s * 0.25, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fill();
+
+  // Dorsal fin - fan shaped
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.3, -s * 0.55);
+  ctx.quadraticCurveTo(0, -s * 1.1, s * 0.4, -s * 0.55);
+  ctx.fillStyle = c[2] + 'BB';
+  ctx.fill();
+
+  // Pectoral fin
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.1, s * 0.25, s * 0.3, s * 0.12, -0.3, 0, Math.PI * 2);
+  ctx.fillStyle = c[2] + '88';
+  ctx.fill();
+
+  // Eye
+  drawEye(s * 0.45, -s * 0.08, s * 0.14);
+}
+
+function drawAngelfish(fish) {
+  const s = fish.size;
+  const c = fish.colorSet;
+  const tw = Math.sin(fish.tailPhase) * s * 0.3;
+
+  // Tail - forked
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.4, 0);
+  ctx.lineTo(-s * 1.0, -s * 0.5 + tw * 0.5);
+  ctx.quadraticCurveTo(-s * 0.7, tw * 0.3, -s * 1.0, s * 0.5 + tw * 0.5);
+  ctx.closePath();
+  ctx.fillStyle = c[2];
+  ctx.fill();
+
+  // Body - tall diamond
+  ctx.beginPath();
+  ctx.moveTo(s * 0.8, 0);
+  ctx.quadraticCurveTo(s * 0.3, -s * 0.9, -s * 0.1, -s * 0.85);
+  ctx.quadraticCurveTo(-s * 0.5, -s * 0.5, -s * 0.5, 0);
+  ctx.quadraticCurveTo(-s * 0.5, s * 0.5, -s * 0.1, s * 0.85);
+  ctx.quadraticCurveTo(s * 0.3, s * 0.9, s * 0.8, 0);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, -s * 0.9, 0, s * 0.9);
+  g.addColorStop(0, c[1]);
+  g.addColorStop(0.5, c[0]);
+  g.addColorStop(1, c[2]);
+  ctx.fillStyle = g;
+  ctx.fill();
+
+  // Vertical stripes
+  ctx.globalAlpha = 0.25;
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath();
+    ctx.ellipse(i * s * 0.22, 0, s * 0.06, s * 0.7, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#000';
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Long dorsal filament
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.05, -s * 0.82);
+  ctx.quadraticCurveTo(s * 0.15, -s * 1.4, s * 0.05, -s * 1.5);
+  ctx.strokeStyle = c[2];
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Long ventral filament
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.05, s * 0.82);
+  ctx.quadraticCurveTo(s * 0.15, s * 1.4, s * 0.05, s * 1.5);
+  ctx.stroke();
+
+  drawEye(s * 0.35, -s * 0.05, s * 0.1);
+}
+
+function drawClownfish(fish) {
+  const s = fish.size;
+  const c = fish.colorSet;
+  const tw = Math.sin(fish.tailPhase) * s * 0.3;
+
+  // Tail
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.6, 0);
+  ctx.lineTo(-s * 1.1, -s * 0.35 + tw * 0.5);
+  ctx.lineTo(-s * 1.1, s * 0.35 + tw * 0.5);
+  ctx.closePath();
+  ctx.fillStyle = c[0];
+  ctx.fill();
+
+  // Body
+  ctx.beginPath();
+  ctx.ellipse(0, 0, s, s * 0.45, 0, 0, Math.PI * 2);
+  ctx.fillStyle = c[0];
+  ctx.fill();
+
+  // White bands
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 1.5;
+
+  // Head band
+  ctx.beginPath();
+  ctx.ellipse(s * 0.45, 0, s * 0.07, s * 0.44, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Mid band
+  ctx.beginPath();
+  ctx.ellipse(s * 0.05, 0, s * 0.06, s * 0.43, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Rear band
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.4, 0, s * 0.06, s * 0.38, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Dorsal fin
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.1, -s * 0.42);
+  ctx.quadraticCurveTo(s * 0.15, -s * 0.7, s * 0.45, -s * 0.42);
+  ctx.fillStyle = c[0];
+  ctx.fill();
+
+  drawEye(s * 0.52, -s * 0.08, s * 0.12);
+}
+
+function drawPufferfish(fish) {
+  const s = fish.size;
+  const c = fish.colorSet;
+  const tw = Math.sin(fish.tailPhase) * s * 0.25;
+
+  // Tiny tail
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.55, 0);
+  ctx.lineTo(-s * 0.85, -s * 0.2 + tw * 0.3);
+  ctx.lineTo(-s * 0.85, s * 0.2 + tw * 0.3);
+  ctx.closePath();
+  ctx.fillStyle = c[2];
+  ctx.fill();
+
+  // Round body
+  ctx.beginPath();
+  ctx.arc(0, 0, s * 0.75, 0, Math.PI * 2);
+  const g = ctx.createRadialGradient(-s * 0.15, -s * 0.15, s * 0.1, 0, 0, s * 0.75);
+  g.addColorStop(0, c[1]);
+  g.addColorStop(1, c[0]);
+  ctx.fillStyle = g;
+  ctx.fill();
+
+  // Spikes
+  ctx.strokeStyle = c[2];
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    const r1 = s * 0.72;
+    const r2 = s * (0.9 + Math.sin(fish.tailPhase + i) * 0.05);
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
+    ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2);
+    ctx.stroke();
+  }
+
+  // Belly spot
+  ctx.beginPath();
+  ctx.ellipse(s * 0.05, s * 0.2, s * 0.3, s * 0.18, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fill();
+
+  // Tiny fins
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.15, -s * 0.45, s * 0.15, s * 0.06, -0.4, 0, Math.PI * 2);
+  ctx.fillStyle = c[2] + 'AA';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.15, s * 0.45, s * 0.15, s * 0.06, 0.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Big cute eyes
+  drawEye(s * 0.38, -s * 0.15, s * 0.18);
+  drawEye(s * 0.38, s * 0.05, s * 0.14);
+
+  // Smile
+  ctx.beginPath();
+  ctx.arc(s * 0.5, s * 0.12, s * 0.12, 0.1, Math.PI * 0.9);
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+function drawButterflyfish(fish) {
+  const s = fish.size;
+  const c = fish.colorSet;
+  const tw = Math.sin(fish.tailPhase) * s * 0.3;
+
+  // Tail
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.5, 0);
+  ctx.lineTo(-s * 0.95, -s * 0.3 + tw * 0.4);
+  ctx.lineTo(-s * 0.95, s * 0.3 + tw * 0.4);
+  ctx.closePath();
+  ctx.fillStyle = c[2];
+  ctx.fill();
+
+  // Disc body
+  ctx.beginPath();
+  ctx.ellipse(0, 0, s * 0.8, s * 0.65, 0, 0, Math.PI * 2);
+  const g = ctx.createLinearGradient(0, -s * 0.65, 0, s * 0.65);
+  g.addColorStop(0, '#FFE66D');
+  g.addColorStop(0.5, c[1]);
+  g.addColorStop(1, '#FFE66D');
+  ctx.fillStyle = g;
+  ctx.fill();
+
+  // Chevron patterns
+  ctx.strokeStyle = c[2] + '66';
+  ctx.lineWidth = 2;
+  for (let i = -2; i <= 1; i++) {
+    ctx.beginPath();
+    ctx.moveTo(i * s * 0.25, -s * 0.5);
+    ctx.lineTo(i * s * 0.25 + s * 0.12, 0);
+    ctx.lineTo(i * s * 0.25, s * 0.5);
+    ctx.stroke();
+  }
+
+  // Eye mask - dark band through eye
+  ctx.beginPath();
+  ctx.ellipse(s * 0.35, -s * 0.1, s * 0.12, s * 0.55, -0.15, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fill();
+
+  // Eyespot on dorsal
+  ctx.beginPath();
+  ctx.arc(-s * 0.15, -s * 0.45, s * 0.12, 0, Math.PI * 2);
+  ctx.fillStyle = '#111';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(-s * 0.15, -s * 0.45, s * 0.06, 0, Math.PI * 2);
+  ctx.fillStyle = '#FFE66D';
+  ctx.fill();
+
+  // Snout extension
+  ctx.beginPath();
+  ctx.moveTo(s * 0.75, -s * 0.05);
+  ctx.quadraticCurveTo(s * 1.05, 0, s * 0.75, s * 0.05);
+  ctx.fillStyle = c[0];
+  ctx.fill();
+
+  // Dorsal + anal fin edge
+  ctx.beginPath();
+  ctx.moveTo(s * 0.4, -s * 0.62);
+  ctx.quadraticCurveTo(0, -s * 0.85, -s * 0.4, -s * 0.62);
+  ctx.fillStyle = c[2] + '99';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.4, s * 0.62);
+  ctx.quadraticCurveTo(0, s * 0.85, -s * 0.4, s * 0.62);
+  ctx.fill();
+
+  drawEye(s * 0.4, -s * 0.08, s * 0.1);
+}
+
+function drawNeedlefish(fish) {
+  const s = fish.size;
+  const c = fish.colorSet;
+  const tw = Math.sin(fish.tailPhase) * s * 0.4;
+
+  // Tail - deeply forked
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.9, 0);
+  ctx.lineTo(-s * 1.4, -s * 0.45 + tw * 0.5);
+  ctx.quadraticCurveTo(-s * 1.1, tw * 0.3, -s * 1.4, s * 0.45 + tw * 0.5);
+  ctx.closePath();
+  ctx.fillStyle = c[2];
+  ctx.fill();
+
+  // Long slender body
+  ctx.beginPath();
+  ctx.moveTo(s * 1.2, -s * 0.04);
+  ctx.quadraticCurveTo(s * 0.6, -s * 0.22, 0, -s * 0.2);
+  ctx.quadraticCurveTo(-s * 0.5, -s * 0.18, -s * 0.9, -s * 0.06);
+  ctx.lineTo(-s * 0.9, s * 0.06);
+  ctx.quadraticCurveTo(-s * 0.5, s * 0.18, 0, s * 0.2);
+  ctx.quadraticCurveTo(s * 0.6, s * 0.22, s * 1.2, s * 0.04);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, -s * 0.22, 0, s * 0.22);
+  g.addColorStop(0, c[1]);
+  g.addColorStop(0.4, c[0]);
+  g.addColorStop(1, c[2]);
+  ctx.fillStyle = g;
+  ctx.fill();
+
+  // Lateral line
+  ctx.beginPath();
+  ctx.moveTo(s * 1.0, 0);
+  ctx.lineTo(-s * 0.85, 0);
+  ctx.strokeStyle = c[2] + '55';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Dorsal fin (small, far back)
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.3, -s * 0.2);
+  ctx.quadraticCurveTo(-s * 0.15, -s * 0.4, 0, -s * 0.2);
+  ctx.fillStyle = c[2] + 'AA';
+  ctx.fill();
+
+  // Long pointed snout
+  ctx.beginPath();
+  ctx.moveTo(s * 1.2, -s * 0.04);
+  ctx.lineTo(s * 1.6, 0);
+  ctx.lineTo(s * 1.2, s * 0.04);
+  ctx.fillStyle = c[0];
+  ctx.fill();
+
+  // Eye
+  drawEye(s * 0.95, -s * 0.04, s * 0.07);
+}
+
+function drawLionfish(fish) {
+  const s = fish.size;
+  const c = fish.colorSet;
+  const tw = Math.sin(fish.tailPhase) * s * 0.3;
+
+  // Tail - fan shaped
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.5, 0);
+  for (let i = 0; i < 7; i++) {
+    const a = -0.6 + i * 0.2;
+    ctx.lineTo(-s * (0.9 + Math.sin(fish.tailPhase + i) * 0.05), Math.sin(a) * s * 0.55);
+  }
+  ctx.closePath();
+  ctx.fillStyle = c[2] + '99';
+  ctx.fill();
+
+  // Dramatic dorsal spines
+  ctx.strokeStyle = c[2];
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 9; i++) {
+    const x = s * (0.5 - i * 0.14);
+    const spineLen = s * (0.7 + Math.sin(i * 0.8) * 0.2);
+    const sway = Math.sin(fish.tailPhase + i * 0.5) * s * 0.08;
+    ctx.beginPath();
+    ctx.moveTo(x, -s * 0.25);
+    ctx.quadraticCurveTo(x + sway, -s * 0.25 - spineLen * 0.6, x + sway * 1.5, -s * 0.25 - spineLen);
+    ctx.stroke();
+    // Membrane between spines
+    if (i < 8) {
+      const nx = s * (0.5 - (i + 1) * 0.14);
+      const nSpineLen = s * (0.7 + Math.sin((i + 1) * 0.8) * 0.2);
+      const nSway = Math.sin(fish.tailPhase + (i + 1) * 0.5) * s * 0.08;
+      ctx.beginPath();
+      ctx.moveTo(x + sway * 1.5, -s * 0.25 - spineLen);
+      ctx.lineTo(nx + nSway * 1.5, -s * 0.25 - nSpineLen);
+      ctx.strokeStyle = c[2] + '33';
+      ctx.stroke();
+      ctx.strokeStyle = c[2];
+    }
+  }
+
+  // Pectoral fan spines
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 6; i++) {
+    const a = 0.3 + i * 0.15;
+    const px = s * 0.1;
+    const py = s * 0.2;
+    const len = s * 0.6;
+    const sway = Math.sin(fish.tailPhase + i * 0.3) * s * 0.05;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.quadraticCurveTo(px + sway, py + len * 0.5, Math.cos(a) * len + sway, py + Math.sin(a) * len);
+    ctx.strokeStyle = c[1] + '66';
+    ctx.stroke();
+  }
+
+  // Body - oval with stripes
+  ctx.beginPath();
+  ctx.ellipse(0, 0, s * 0.8, s * 0.3, 0, 0, Math.PI * 2);
+  const g = ctx.createLinearGradient(0, -s * 0.3, 0, s * 0.3);
+  g.addColorStop(0, '#fff');
+  g.addColorStop(0.5, c[1]);
+  g.addColorStop(1, c[0]);
+  ctx.fillStyle = g;
+  ctx.fill();
+
+  // Brown/red stripes
+  ctx.globalAlpha = 0.4;
+  for (let i = 0; i < 5; i++) {
+    const x = s * (0.4 - i * 0.2);
+    ctx.beginPath();
+    ctx.moveTo(x, -s * 0.28);
+    ctx.quadraticCurveTo(x + s * 0.05, 0, x, s * 0.28);
+    ctx.strokeStyle = '#8B4513';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  drawEye(s * 0.5, -s * 0.06, s * 0.09);
+}
+
+function drawSeahorse(fish) {
+  const s = fish.size;
+  const c = fish.colorSet;
+  const tw = Math.sin(fish.tailPhase) * s * 0.15;
+
+  // Curled tail
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.1, s * 0.5);
+  ctx.quadraticCurveTo(-s * 0.35, s * 0.8, -s * 0.1, s * 0.95);
+  ctx.quadraticCurveTo(s * 0.15, s * 1.1, s * 0.05, s * 0.85);
+  ctx.strokeStyle = c[2];
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Body - S-curve
+  ctx.beginPath();
+  ctx.moveTo(s * 0.15, -s * 0.7);
+  ctx.quadraticCurveTo(s * 0.5, -s * 0.4, s * 0.2, -s * 0.1);
+  ctx.quadraticCurveTo(-s * 0.1, s * 0.15, s * 0.05, s * 0.45);
+  ctx.quadraticCurveTo(s * 0.15, s * 0.6, s * 0.1, s * 0.55);
+  ctx.quadraticCurveTo(-s * 0.2, s * 0.3, -s * 0.1, s * 0.0);
+  ctx.quadraticCurveTo(-s * 0.15, -s * 0.3, s * 0.05, -s * 0.55);
+  ctx.quadraticCurveTo(s * 0.12, -s * 0.65, s * 0.15, -s * 0.7);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(-s * 0.15, -s * 0.7, s * 0.2, s * 0.6);
+  g.addColorStop(0, c[1]);
+  g.addColorStop(1, c[0]);
+  ctx.fillStyle = g;
+  ctx.fill();
+
+  // Belly ridges
+  ctx.strokeStyle = c[2] + '44';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 5; i++) {
+    const y = -s * 0.3 + i * s * 0.18;
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.08, y);
+    ctx.lineTo(s * 0.15, y);
+    ctx.stroke();
+  }
+
+  // Snout
+  ctx.beginPath();
+  ctx.moveTo(s * 0.15, -s * 0.7);
+  ctx.lineTo(s * 0.5, -s * 0.78);
+  ctx.lineTo(s * 0.15, -s * 0.65);
+  ctx.fillStyle = c[0];
+  ctx.fill();
+
+  // Crown
+  ctx.beginPath();
+  ctx.moveTo(s * 0.05, -s * 0.58);
+  ctx.lineTo(-s * 0.1, -s * 0.85);
+  ctx.lineTo(s * 0.15, -s * 0.6);
+  ctx.lineTo(s * 0.0, -s * 0.9);
+  ctx.lineTo(s * 0.2, -s * 0.62);
+  ctx.fillStyle = c[2] + 'AA';
+  ctx.fill();
+
+  // Dorsal fin
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.12, -s * 0.2);
+  ctx.quadraticCurveTo(-s * 0.35, -s * 0.05 + tw, -s * 0.08, s * 0.15);
+  ctx.fillStyle = c[2] + '77';
+  ctx.fill();
+
+  drawEye(s * 0.2, -s * 0.58, s * 0.08);
+}
+
+function drawMandarinFish(fish) {
+  const s = fish.size;
+  const c = fish.colorSet;
+  const tw = Math.sin(fish.tailPhase) * s * 0.3;
+
+  // Tail
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.55, 0);
+  ctx.lineTo(-s * 1.0, -s * 0.35 + tw * 0.5);
+  ctx.lineTo(-s * 1.0, s * 0.35 + tw * 0.5);
+  ctx.closePath();
+  ctx.fillStyle = c[2];
+  ctx.fill();
+
+  // Body
+  ctx.beginPath();
+  ctx.ellipse(0, 0, s, s * 0.5, 0, 0, Math.PI * 2);
+  const g = ctx.createLinearGradient(-s, -s * 0.5, s, s * 0.5);
+  g.addColorStop(0, '#0EA5E9');
+  g.addColorStop(0.3, '#F97316');
+  g.addColorStop(0.6, '#22D3EE');
+  g.addColorStop(1, '#F97316');
+  ctx.fillStyle = g;
+  ctx.fill();
+
+  // Swirling patterns
+  ctx.globalAlpha = 0.35;
+  ctx.strokeStyle = '#1E40AF';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 6; i++) {
+    const cx = -s * 0.4 + i * s * 0.2;
+    const cy = (i % 2 === 0 ? -1 : 1) * s * 0.15;
+    ctx.beginPath();
+    ctx.arc(cx, cy, s * 0.12, 0, Math.PI * 1.5);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // Blue edge lines
+  ctx.strokeStyle = '#3B82F6';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, s * 0.98, s * 0.48, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Dorsal fin
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.2, -s * 0.48);
+  ctx.quadraticCurveTo(s * 0.05, -s * 0.85, s * 0.35, -s * 0.48);
+  ctx.fillStyle = '#F97316' + 'BB';
+  ctx.fill();
+
+  drawEye(s * 0.55, -s * 0.1, s * 0.11);
+}
+
+function drawDiscus(fish) {
+  const s = fish.size;
+  const c = fish.colorSet;
+  const tw = Math.sin(fish.tailPhase) * s * 0.25;
+
+  // Small tail
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.35, 0);
+  ctx.lineTo(-s * 0.65, -s * 0.2 + tw * 0.3);
+  ctx.lineTo(-s * 0.65, s * 0.2 + tw * 0.3);
+  ctx.closePath();
+  ctx.fillStyle = c[2];
+  ctx.fill();
+
+  // Nearly circular body
+  ctx.beginPath();
+  ctx.ellipse(0, 0, s * 0.6, s * 0.65, 0, 0, Math.PI * 2);
+  const g = ctx.createRadialGradient(0, 0, s * 0.05, 0, 0, s * 0.65);
+  g.addColorStop(0, c[1]);
+  g.addColorStop(1, c[0]);
+  ctx.fillStyle = g;
+  ctx.fill();
+
+  // Wavy horizontal bands
+  ctx.globalAlpha = 0.3;
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath();
+    const y = i * s * 0.2;
+    for (let x = -s * 0.55; x < s * 0.55; x += 2) {
+      const wy = y + Math.sin(x * 5 + fish.tailPhase * 0.5) * s * 0.03;
+      if (x === -s * 0.55) ctx.moveTo(x, wy);
+      else ctx.lineTo(x, wy);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // Dorsal and anal fin (flowing)
+  ctx.beginPath();
+  ctx.moveTo(s * 0.25, -s * 0.62);
+  ctx.quadraticCurveTo(-s * 0.05, -s * 0.78, -s * 0.3, -s * 0.55);
+  ctx.fillStyle = c[2] + 'AA';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.25, s * 0.62);
+  ctx.quadraticCurveTo(-s * 0.05, s * 0.78, -s * 0.3, s * 0.55);
+  ctx.fill();
+
+  drawEye(s * 0.3, -s * 0.08, s * 0.1);
+}
+
+function drawEye(ex, ey, r) {
+  ctx.beginPath();
+  ctx.arc(ex, ey, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(ex + r * 0.15, ey, r * 0.55, 0, Math.PI * 2);
+  ctx.fillStyle = '#111';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(ex + r * 0.35, ey - r * 0.25, r * 0.18, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.fill();
+}
+
+// ==================== New Sea Creatures ====================
+
+function drawCrab(crab) {
+  const s = crab.size;
+  const bodyBob = Math.abs(Math.sin(crab.legPhase * 2)) * s * 0.04;
+
+  // 8 Legs - staggered stepping
+  ctx.strokeStyle = '#8B4513';
+  ctx.lineWidth = s * 0.12;
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 4; i++) {
+    const legLen = s * (0.65 + i * 0.06);
+    const baseX = -s * 0.05 - i * s * 0.1;
+    // Staggered wave for each leg pair
+    const legWave = Math.sin(crab.legPhase + i * 1.2) * s * 0.12;
+
+    // Left leg
+    ctx.beginPath();
+    ctx.moveTo(baseX, -bodyBob);
+    ctx.quadraticCurveTo(baseX - legLen * 0.4, -s * 0.2 + legWave, baseX - legLen, -s * 0.12 + legWave);
+    ctx.stroke();
+
+    // Right leg
+    const rightWave = Math.sin(crab.legPhase + i * 1.2 + Math.PI) * s * 0.12;
+    ctx.beginPath();
+    ctx.moveTo(baseX, -bodyBob);
+    ctx.quadraticCurveTo(baseX - legLen * 0.4, s * 0.2 + rightWave, baseX - legLen, s * 0.12 + rightWave);
+    ctx.stroke();
+  }
+
+  ctx.save();
+  ctx.translate(0, -bodyBob);
+
+  // Claws - subtle reach/pinch
+  const clawSway = Math.sin(crab.legPhase) * 0.1;
+  ctx.fillStyle = '#A0522D';
+  // Left claw
+  ctx.save();
+  ctx.translate(s * 0.6, -s * 0.35);
+  ctx.rotate(clawSway);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, s * 0.25, s * 0.15, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(s * 0.15, s * 0.1, s * 0.08, s * 0.15, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Right claw
+  ctx.save();
+  ctx.translate(s * 0.6, s * 0.35);
+  ctx.rotate(-clawSway);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, s * 0.25, s * 0.15, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(s * 0.15, -s * 0.1, s * 0.08, s * 0.15, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Body shell
+  ctx.beginPath();
+  ctx.ellipse(0, 0, s * 0.55, s * 0.4, 0, 0, Math.PI * 2);
+  const shellGrad = ctx.createRadialGradient(-s * 0.1, -s * 0.1, s * 0.05, 0, 0, s * 0.55);
+  shellGrad.addColorStop(0, '#CD853F');
+  shellGrad.addColorStop(0.7, '#A0522D');
+  shellGrad.addColorStop(1, '#8B4513');
+  ctx.fillStyle = shellGrad;
+  ctx.fill();
+
+  // Shell pattern
+  ctx.strokeStyle = '#654321';
+  ctx.lineWidth = 1;
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath();
+    ctx.arc(i * s * 0.12, 0, s * 0.06, -Math.PI * 0.5, Math.PI * 0.5);
+    ctx.stroke();
+  }
+
+  // Eye stalks
+  ctx.strokeStyle = '#8B4513';
+  ctx.lineWidth = s * 0.08;
+  const eyeSway = Math.sin(crab.legPhase * 0.5) * 0.05;
+  ctx.beginPath();
+  ctx.moveTo(s * 0.3, -s * 0.15);
+  ctx.lineTo(s * 0.45, -s * 0.35 + eyeSway * s);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.3, s * 0.15);
+  ctx.lineTo(s * 0.45, s * 0.35 - eyeSway * s);
+  ctx.stroke();
+
+  // Eyes
+  ctx.beginPath();
+  ctx.arc(s * 0.48, -s * 0.38 + eyeSway * s, s * 0.07, 0, Math.PI * 2);
+  ctx.arc(s * 0.48, s * 0.38 - eyeSway * s, s * 0.07, 0, Math.PI * 2);
+  ctx.fillStyle = '#111';
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawTurtle(turtle) {
+  const s = turtle.size;
+  const flipperPhase = Math.sin(turtle.flipperPhase) * s * 0.2;
+  const headPhase = Math.sin(turtle.headPhase) * s * 0.05;
+
+  // Back flippers
+  ctx.fillStyle = '#5D8A66';
+  // Left back flipper
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.3, -s * 0.25);
+  ctx.quadraticCurveTo(-s * 0.7, -s * 0.5 + flipperPhase, -s * 0.85, -s * 0.35 + flipperPhase);
+  ctx.quadraticCurveTo(-s * 0.6, -s * 0.1, -s * 0.3, -s * 0.15);
+  ctx.fill();
+  // Right back flipper
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.3, s * 0.25);
+  ctx.quadraticCurveTo(-s * 0.7, s * 0.5 - flipperPhase, -s * 0.85, s * 0.35 - flipperPhase);
+  ctx.quadraticCurveTo(-s * 0.6, s * 0.1, -s * 0.3, s * 0.15);
+  ctx.fill();
+
+  // Front flippers
+  // Left front flipper
+  ctx.beginPath();
+  ctx.moveTo(s * 0.2, -s * 0.3);
+  ctx.quadraticCurveTo(s * 0.5, -s * 0.7 - flipperPhase, s * 0.8, -s * 0.5 - flipperPhase);
+  ctx.quadraticCurveTo(s * 0.6, -s * 0.2, s * 0.2, -s * 0.15);
+  ctx.fill();
+  // Right front flipper
+  ctx.beginPath();
+  ctx.moveTo(s * 0.2, s * 0.3);
+  ctx.quadraticCurveTo(s * 0.5, s * 0.7 + flipperPhase, s * 0.8, s * 0.5 + flipperPhase);
+  ctx.quadraticCurveTo(s * 0.6, s * 0.2, s * 0.2, s * 0.15);
+  ctx.fill();
+
+  // Shell
+  ctx.beginPath();
+  ctx.ellipse(0, 0, s * 0.55, s * 0.4, 0, 0, Math.PI * 2);
+  const shellGrad = ctx.createRadialGradient(-s * 0.1, -s * 0.15, s * 0.1, 0, 0, s * 0.55);
+  shellGrad.addColorStop(0, '#6B8E23');
+  shellGrad.addColorStop(0.6, '#556B2F');
+  shellGrad.addColorStop(1, '#3D5229');
+  ctx.fillStyle = shellGrad;
+  ctx.fill();
+
+  // Shell pattern (hexagon-like)
+  ctx.strokeStyle = '#2F4F2F';
+  ctx.lineWidth = 1.5;
+  ctx.globalAlpha = 0.4;
+  for (let ring = 0; ring < 3; ring++) {
+    const r = s * (0.15 + ring * 0.12);
+    const count = 6 + ring * 2;
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * r * 0.7, Math.sin(a) * r * 0.5, s * 0.08, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // Tail
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.5, 0);
+  ctx.quadraticCurveTo(-s * 0.7, 0, -s * 0.8, s * 0.05);
+  ctx.strokeStyle = '#5D8A66';
+  ctx.lineWidth = s * 0.08;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Head
+  ctx.beginPath();
+  ctx.ellipse(s * 0.6 + headPhase, 0, s * 0.2, s * 0.15, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#5D8A66';
+  ctx.fill();
+
+  // Eyes
+  drawEye(s * 0.7 + headPhase, -s * 0.05, s * 0.05);
+}
+
+function drawLobster(lobster) {
+  const s = lobster.size;
+  const tailWave = Math.sin(lobster.tailPhase) * s * 0.15;
+  const antennaWave = Math.sin(lobster.antennaPhase) * s * 0.1;
+  const bodyBob = Math.sin(lobster.legPhase * 2) * s * 0.03;
+
+  // Tail segments
+  ctx.fillStyle = '#B22222';
+  for (let i = 0; i < 4; i++) {
+    const segX = -s * (0.2 + i * 0.25);
+    const segSize = s * (0.22 - i * 0.02);
+    const segY = tailWave * (0.3 + i * 0.25) + bodyBob;
+    ctx.beginPath();
+    ctx.ellipse(segX, segY, segSize, segSize * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Tail fan
+  ctx.beginPath();
+  ctx.moveTo(-s * 1.15, tailWave * 0.9 + bodyBob);
+  ctx.lineTo(-s * 1.4, -s * 0.25 + tailWave + bodyBob);
+  ctx.quadraticCurveTo(-s * 1.25, tailWave * 0.9 + bodyBob, -s * 1.4, s * 0.25 + tailWave + bodyBob);
+  ctx.closePath();
+  ctx.fillStyle = '#CD5C5C';
+  ctx.fill();
+
+  // Legs (small walking legs) - elliptical cycle
+  ctx.strokeStyle = '#A52A2A';
+  ctx.lineWidth = s * 0.06;
+  for (let i = 0; i < 4; i++) {
+    const lx = s * (-0.1 + i * 0.08);
+    const phase = lobster.legPhase + i * 1.2;
+    // Left leg
+    const lWaveX = Math.cos(phase) * s * 0.1;
+    const lWaveY = Math.sin(phase) * s * 0.1;
+    ctx.beginPath();
+    ctx.moveTo(lx, -s * 0.15 + bodyBob);
+    ctx.quadraticCurveTo(lx + lWaveX, -s * 0.35 + lWaveY + bodyBob, lx + lWaveX * 1.5, -s * 0.3 + lWaveY + bodyBob);
+    ctx.stroke();
+    // Right leg
+    const rWaveX = Math.cos(phase + Math.PI) * s * 0.1;
+    const rWaveY = Math.sin(phase + Math.PI) * s * 0.1;
+    ctx.beginPath();
+    ctx.moveTo(lx, s * 0.15 + bodyBob);
+    ctx.quadraticCurveTo(lx + rWaveX, s * 0.35 + rWaveY + bodyBob, lx + rWaveX * 1.5, s * 0.3 + rWaveY + bodyBob);
+    ctx.stroke();
+  }
+
+  // Large claws
+  const clawSway = Math.sin(lobster.antennaPhase * 0.5) * 0.08;
+  // Left claw
+  ctx.save();
+  ctx.translate(s * 0.35, -s * 0.15 + bodyBob);
+  ctx.rotate(clawSway);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(s * 0.2, -s * 0.15);
+  ctx.ellipse(s * 0.35, -s * 0.2, s * 0.18, s * 0.1, -0.4, 0, Math.PI * 2);
+  ctx.fillStyle = '#CD5C5C';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(s * 0.47, -s * 0.13, s * 0.08, s * 0.06, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Right claw
+  ctx.save();
+  ctx.translate(s * 0.35, s * 0.15 + bodyBob);
+  ctx.rotate(-clawSway);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(s * 0.2, s * 0.15);
+  ctx.ellipse(s * 0.35, s * 0.2, s * 0.18, s * 0.1, 0.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(s * 0.47, s * 0.13, s * 0.08, s * 0.06, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Body / Carapace
+  ctx.beginPath();
+  ctx.ellipse(s * 0.1, bodyBob, s * 0.35, s * 0.22, 0, 0, Math.PI * 2);
+  const bodyGrad = ctx.createRadialGradient(0, -s * 0.05, s * 0.05, s * 0.1, 0, s * 0.35);
+  bodyGrad.addColorStop(0, '#DC143C');
+  bodyGrad.addColorStop(0.7, '#B22222');
+  bodyGrad.addColorStop(1, '#8B0000');
+  ctx.fillStyle = bodyGrad;
+  ctx.fill();
+
+  // Head / Rostrum
+  ctx.beginPath();
+  ctx.moveTo(s * 0.4, -s * 0.1 + bodyBob);
+  ctx.lineTo(s * 0.75, bodyBob);
+  ctx.lineTo(s * 0.4, s * 0.1 + bodyBob);
+  ctx.closePath();
+  ctx.fill();
+
+  // Antennae
+  ctx.strokeStyle = '#CD5C5C';
+  ctx.lineWidth = s * 0.04;
+  // Long antennae
+  ctx.beginPath();
+  ctx.moveTo(s * 0.55, -s * 0.08 + bodyBob);
+  ctx.quadraticCurveTo(s * 0.9, -s * 0.3 + antennaWave + bodyBob, s * 1.2, -s * 0.15 + antennaWave + bodyBob);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.55, s * 0.08 + bodyBob);
+  ctx.quadraticCurveTo(s * 0.9, s * 0.3 - antennaWave + bodyBob, s * 1.2, s * 0.15 - antennaWave + bodyBob);
+  ctx.stroke();
+
+  // Eyes on stalks
+  ctx.fillStyle = '#8B0000';
+  ctx.beginPath();
+  ctx.ellipse(s * 0.35, -s * 0.18 + bodyBob, s * 0.04, s * 0.08, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(s * 0.35, s * 0.18 + bodyBob, s * 0.04, s * 0.08, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(s * 0.38, -s * 0.22 + bodyBob, s * 0.06, 0, Math.PI * 2);
+  ctx.arc(s * 0.38, s * 0.22 + bodyBob, s * 0.06, 0, Math.PI * 2);
+  ctx.fillStyle = '#111';
+  ctx.fill();
+}
+
+function drawShark(shark) {
+  const s = shark.size;
+  const tailWave = Math.sin(shark.tailPhase) * s * 0.25;
+
+  // Tail fin (caudal fin) - heterocercal
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.8, 0);
+  ctx.quadraticCurveTo(-s * 1.2, -s * 0.5 + tailWave, -s * 1.4, -s * 0.35 + tailWave);
+  ctx.lineTo(-s * 1.3, 0);
+  ctx.lineTo(-s * 1.4, s * 0.35 - tailWave);
+  ctx.quadraticCurveTo(-s * 1.2, s * 0.5 - tailWave, -s * 0.8, 0);
+  ctx.closePath();
+  ctx.fillStyle = '#405060';
+  ctx.fill();
+
+  // Pectoral fins (side fins)
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.2, s * 0.15);
+  ctx.quadraticCurveTo(-s * 0.1, s * 0.55, s * 0.15, s * 0.45);
+  ctx.quadraticCurveTo(s * 0.05, s * 0.25, -s * 0.2, s * 0.15);
+  ctx.fillStyle = '#4a5a6a';
+  ctx.fill();
+
+  // Body - streamlined
+  ctx.beginPath();
+  ctx.moveTo(s * 0.9, 0);
+  ctx.quadraticCurveTo(s * 0.6, -s * 0.35, s * 0.1, -s * 0.28);
+  ctx.quadraticCurveTo(-s * 0.4, -s * 0.35, -s * 0.8, 0);
+  ctx.quadraticCurveTo(-s * 0.4, s * 0.35, s * 0.1, s * 0.28);
+  ctx.quadraticCurveTo(s * 0.6, s * 0.35, s * 0.9, 0);
+  ctx.closePath();
+  const bodyGrad = ctx.createLinearGradient(0, -s * 0.35, 0, s * 0.35);
+  bodyGrad.addColorStop(0, '#3d4f5f');
+  bodyGrad.addColorStop(0.5, '#5a6b7a');
+  bodyGrad.addColorStop(1, '#e8e8e8');
+  ctx.fillStyle = bodyGrad;
+  ctx.fill();
+
+  // Gill slits
+  ctx.strokeStyle = '#2d3a45';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    const gx = s * (0.25 + i * 0.06);
+    ctx.moveTo(gx, -s * 0.12);
+    ctx.lineTo(gx - s * 0.02, -s * 0.22);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(gx, s * 0.12);
+    ctx.lineTo(gx - s * 0.02, s * 0.22);
+    ctx.stroke();
+  }
+
+  // Dorsal fin
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.1, -s * 0.28);
+  ctx.quadraticCurveTo(s * 0.05, -s * 0.65, s * 0.2, -s * 0.28);
+  ctx.fillStyle = '#3d4f5f';
+  ctx.fill();
+
+  // Pelvic fin
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.45, s * 0.25);
+  ctx.quadraticCurveTo(-s * 0.35, s * 0.45, -s * 0.2, s * 0.35);
+  ctx.fill();
+
+  // Snout
+  ctx.beginPath();
+  ctx.moveTo(s * 0.9, 0);
+  ctx.quadraticCurveTo(s * 1.0, -s * 0.08, s * 1.15, -s * 0.05);
+  ctx.quadraticCurveTo(s * 1.2, 0, s * 1.15, s * 0.05);
+  ctx.quadraticCurveTo(s * 1.0, s * 0.08, s * 0.9, 0);
+  ctx.fillStyle = '#4a5a6a';
+  ctx.fill();
+
+  // Eye
+  ctx.beginPath();
+  ctx.ellipse(s * 0.55, -s * 0.12, s * 0.06, s * 0.04, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#111';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(s * 0.57, -s * 0.13, s * 0.015, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+
+  // Mouth animation
+  const openAmount = shark.mouthOpen; // 0 = closed, 1 = fully open
+
+  // Jaw area when mouth is open
+  if (openAmount > 0.1) {
+    // Inside of mouth (dark red/black)
+    ctx.beginPath();
+    ctx.moveTo(s * 0.5, s * 0.04);
+    ctx.quadraticCurveTo(s * 0.8, s * 0.08, s * 1.0, s * 0.06);
+    ctx.lineTo(s * 1.0, s * 0.06 + s * 0.15 * openAmount);
+    ctx.quadraticCurveTo(s * 0.8, s * 0.1 + s * 0.15 * openAmount, s * 0.5, s * 0.06 + s * 0.1 * openAmount);
+    ctx.closePath();
+    ctx.fillStyle = '#1a0a0a';
+    ctx.fill();
+
+    // Gum line
+    ctx.beginPath();
+    ctx.moveTo(s * 0.5, s * 0.04);
+    ctx.quadraticCurveTo(s * 0.8, s * 0.08, s * 1.0, s * 0.06);
+    ctx.strokeStyle = '#3d1a1a';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // Lower jaw
+  ctx.beginPath();
+  ctx.moveTo(s * 0.5, s * 0.06 + s * 0.1 * openAmount);
+  ctx.quadraticCurveTo(s * 0.8, s * 0.12 + s * 0.18 * openAmount, s * 1.0, s * 0.08 + s * 0.15 * openAmount);
+  ctx.strokeStyle = '#1a1a2a';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Upper teeth (always visible a bit)
+  ctx.fillStyle = '#fff';
+  const upperTeethCount = 7 + Math.floor(openAmount * 3);
+  for (let i = 0; i < upperTeethCount; i++) {
+    const tx = s * (0.52 + i * (0.48 / upperTeethCount));
+    const toothSize = s * (0.04 + (i > 2 && i < 5 ? 0.02 : 0));
+    ctx.beginPath();
+    ctx.moveTo(tx, s * 0.05);
+    ctx.lineTo(tx + toothSize * 0.4, s * 0.05 + toothSize * (0.5 + openAmount * 0.5));
+    ctx.lineTo(tx + toothSize * 0.8, s * 0.05);
+    ctx.fill();
+  }
+
+  // Lower teeth - only visible when mouth is open
+  if (openAmount > 0.2) {
+    const lowerTeethCount = 5 + Math.floor(openAmount * 4);
+    for (let i = 0; i < lowerTeethCount; i++) {
+      const tx = s * (0.55 + i * (0.42 / lowerTeethCount));
+      const toothSize = s * (0.035 + Math.sin(i * 1.2) * 0.01);
+      const toothY = s * 0.06 + s * 0.1 * openAmount;
+      ctx.beginPath();
+      ctx.moveTo(tx, toothY);
+      ctx.lineTo(tx + toothSize * 0.35, toothY - toothSize * (0.4 + openAmount * 0.4));
+      ctx.lineTo(tx + toothSize * 0.7, toothY);
+      ctx.fill();
+    }
+  }
+
+  // Pointy front fangs
+  if (openAmount > 0.5) {
+    ctx.fillStyle = '#fffff8';
+    // Upper fangs
+    ctx.beginPath();
+    ctx.moveTo(s * 0.95, s * 0.05);
+    ctx.lineTo(s * 0.97, s * 0.05 + s * 0.08);
+    ctx.lineTo(s * 0.99, s * 0.05);
+    ctx.fill();
+    // Lower fangs
+    ctx.beginPath();
+    ctx.moveTo(s * 0.94, s * 0.06 + s * 0.1 * openAmount);
+    ctx.lineTo(s * 0.96, s * 0.06 + s * 0.1 * openAmount - s * 0.06);
+    ctx.lineTo(s * 0.98, s * 0.06 + s * 0.1 * openAmount);
+    ctx.fill();
+  }
+}
+
+function drawShell(shell) {
+  const s = shell.size;
+  const sway = Math.sin(shell.swayPhase) * s * 0.05;
+
+  // Shell body - spiral
+  ctx.beginPath();
+  let startAngle = 0;
+  for (let i = 0; i < 12; i++) {
+    const t = i / 12;
+    const r = s * (0.1 + t * 0.5);
+    const a = startAngle + t * Math.PI * 1.5;
+    const x = Math.cos(a) * r * 0.6 + sway;
+    const y = Math.sin(a) * r * 0.4;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  const shellGrad = ctx.createRadialGradient(sway * 0.5, 0, s * 0.05, sway, 0, s * 0.6);
+  shellGrad.addColorStop(0, '#FFE4C4');
+  shellGrad.addColorStop(0.5, '#DEB887');
+  shellGrad.addColorStop(1, '#D2691E');
+  ctx.fillStyle = shellGrad;
+  ctx.fill();
+  ctx.strokeStyle = '#8B4513';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Spiral ridges
+  ctx.strokeStyle = 'rgba(139, 69, 19, 0.3)';
+  for (let i = 1; i < 5; i++) {
+    ctx.beginPath();
+    const t = i / 5;
+    const r = s * (0.15 + t * 0.4);
+    ctx.arc(sway * (0.5 + t * 0.5), 0, r, -Math.PI * 0.3 + t * 0.2, Math.PI * 0.3 + t * 0.2);
+    ctx.stroke();
+  }
+
+  // Shell opening
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.4 + sway, 0, s * 0.15, s * 0.25, -0.2, 0, Math.PI * 2);
+  ctx.fillStyle = '#FFF8DC';
+  ctx.fill();
+  ctx.strokeStyle = '#DEB887';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Sometimes pearl inside
+  if (shell.hasPearl) {
+    ctx.beginPath();
+    ctx.arc(-s * 0.42 + sway, s * 0.02, s * 0.08, 0, Math.PI * 2);
+    const pearlGrad = ctx.createRadialGradient(-s * 0.45 + sway, -s * 0.01, s * 0.02, -s * 0.42 + sway, s * 0.02, s * 0.08);
+    pearlGrad.addColorStop(0, '#FFFAF0');
+    pearlGrad.addColorStop(0.7, '#F5F5DC');
+    pearlGrad.addColorStop(1, '#E6E6FA');
+    ctx.fillStyle = pearlGrad;
+    ctx.fill();
+  }
+}
+
+function drawJellyfish(jelly) {
+  const s = jelly.size;
+  const pulse = 1 + Math.sin(jelly.pulsePhase) * 0.1;
+  const tentacleWave = Math.sin(jelly.tentaclePhase) * s * 0.15;
+
+  // Tentacles
+  ctx.strokeStyle = `hsla(${jelly.hue}, 70%, 70%, 0.4)`;
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 8; i++) {
+    const tx = -s * 0.5 + i * s * 0.14;
+    ctx.beginPath();
+    ctx.moveTo(tx, s * 0.1);
+    for (let j = 1; j <= 5; j++) {
+      const wave = tentacleWave * (0.5 + j * 0.15) * Math.sin(jelly.tentaclePhase + i * 0.5 + j * 0.3);
+      ctx.quadraticCurveTo(tx + wave, s * (0.1 + j * 0.3), tx + wave * 0.5, s * (0.1 + j * 0.4));
+    }
+    ctx.stroke();
+  }
+
+  // Frilly oral arms
+  ctx.fillStyle = `hsla(${jelly.hue + 10}, 65%, 75%, 0.35)`;
+  for (let i = 0; i < 4; i++) {
+    const ox = -s * 0.25 + i * s * 0.17;
+    const wave = tentacleWave * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(ox, s * 0.1);
+    ctx.quadraticCurveTo(ox + wave * 0.5, s * 0.4, ox - s * 0.08 + wave, s * 0.5);
+    ctx.quadraticCurveTo(ox + s * 0.04 + wave, s * 0.45, ox + s * 0.12 + wave * 0.5, s * 0.55);
+    ctx.quadraticCurveTo(ox + wave * 0.3, s * 0.35, ox, s * 0.1);
+    ctx.fill();
+  }
+
+  // Bell (umbrella)
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.6 * pulse, s * 0.1);
+  ctx.quadraticCurveTo(-s * 0.65 * pulse, -s * 0.2, -s * 0.4 * pulse, -s * 0.5);
+  ctx.quadraticCurveTo(0, -s * 0.7 * pulse, s * 0.4 * pulse, -s * 0.5);
+  ctx.quadraticCurveTo(s * 0.65 * pulse, -s * 0.2, s * 0.6 * pulse, s * 0.1);
+  ctx.quadraticCurveTo(0, s * 0.15, -s * 0.6 * pulse, s * 0.1);
+  const bellGrad = ctx.createRadialGradient(0, -s * 0.2, s * 0.1, 0, -s * 0.1, s * 0.6);
+  bellGrad.addColorStop(0, `hsla(${jelly.hue}, 80%, 85%, 0.6)`);
+  bellGrad.addColorStop(0.5, `hsla(${jelly.hue + 5}, 70%, 75%, 0.4)`);
+  bellGrad.addColorStop(1, `hsla(${jelly.hue + 10}, 60%, 65%, 0.2)`);
+  ctx.fillStyle = bellGrad;
+  ctx.fill();
+
+  // Bell rim detail
+  ctx.strokeStyle = `hsla(${jelly.hue}, 60%, 70%, 0.5)`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.6 * pulse, s * 0.1);
+  ctx.quadraticCurveTo(0, s * 0.15, s * 0.6 * pulse, s * 0.1);
+  ctx.stroke();
+}
+
+// ==================== Fish Class ====================
+
+const drawFuncs = [
+  drawRoundFish, drawAngelfish, drawClownfish, drawPufferfish,
+  drawButterflyfish, drawNeedlefish, drawLionfish, drawSeahorse,
+  drawMandarinFish, drawDiscus,
+];
+
+// ==================== Bottom Creature Classes ====================
+
+class Crab {
+  constructor(x) {
+    this.x = x;
+    this.y = H - 42 - Math.random() * 8;
+    this.size = 12 + Math.random() * 10;
+    this.speed = 0.08 + Math.random() * 0.12;
+    this.dirX = Math.random() < 0.5 ? 1 : -1;
+    this.legPhase = Math.random() * Math.PI * 2;
+    this.pauseTimer = Math.random() * 2;
+    this.isPaused = Math.random() < 0.3;
+  }
+  update(dt) {
+    this.pauseTimer -= dt;
+    if (this.pauseTimer <= 0) {
+      this.isPaused = !this.isPaused;
+      this.pauseTimer = this.isPaused ? (1 + Math.random() * 2) : (3 + Math.random() * 4);
+      if (!this.isPaused && Math.random() < 0.3) {
+        this.dirX *= -1;
+      }
+    }
+
+    if (!this.isPaused) {
+      // Scuttling rhythm: move faster when legs are in certain parts of the cycle
+      const rhythm = 0.5 + Math.abs(Math.cos(this.legPhase * 2)) * 1.5;
+      this.x += this.dirX * this.speed * rhythm * dt * 60;
+      this.legPhase += 6 * dt; // Faster leg movement
+    } else {
+      // Subtle leg twitch when paused
+      this.legPhase += 0.5 * dt;
+    }
+
+    if (this.x < 40) { this.x = 40; this.dirX = 1; }
+    if (this.x > W - 40) { this.x = W - 40; this.dirX = -1; }
+  }
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    if (this.dirX < 0) ctx.scale(-1, 1);
+    drawCrab(this);
+    ctx.restore();
+  }
+}
+
+class Turtle {
+  constructor() {
+    this.reset();
+    this.x = Math.random() * W;
+    this.y = 100 + Math.random() * (H - 250);
+  }
+  reset() {
+    this.size = 18 + Math.random() * 15;
+    this.speed = 0.4 + Math.random() * 0.6;
+    this.x = -this.size * 3;
+    this.y = 80 + Math.random() * (H - 230);
+    this.dirX = 1;
+    this.dirY = (Math.random() - 0.5) * 0.3;
+    this.flipperPhase = Math.random() * Math.PI * 2;
+    this.headPhase = Math.random() * Math.PI * 2;
+    this.facingFood = false;
+  }
+  update(dt) {
+    this.flipperPhase += 4 * dt;
+    this.headPhase += 2 * dt;
+
+    for (const f of foods) {
+      if (!f.alive) continue;
+      const dx = f.x - this.x;
+      const dy = f.y - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 150) {
+        this.x += (dx / dist) * this.speed * 1.5 * dt * 60;
+        this.y += (dy / dist) * this.speed * 1.5 * dt * 60;
+        this.dirX = dx > 0 ? 1 : -1;
+        this.facingFood = true;
+        return;
+      }
+    }
+    this.facingFood = false;
+
+    this.x += this.dirX * this.speed * dt * 60;
+    this.y += this.dirY * this.speed * 0.4 * dt * 60;
+    this.y += Math.sin(this.headPhase) * 0.15 * dt * 60;
+
+    if (this.y < 60) this.dirY += 0.01;
+    if (this.y > H - 100) this.dirY -= 0.01;
+    if (Math.random() < 0.005) this.dirY = (Math.random() - 0.5) * 0.3;
+
+    if (this.x > W + this.size * 4) this.reset();
+  }
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    if (this.dirX < 0) ctx.scale(-1, 1);
+    drawTurtle(this);
+    ctx.restore();
+  }
+}
+
+class Lobster {
+  constructor(x) {
+    this.x = x;
+    this.y = H - 48 - Math.random() * 10;
+    this.size = 14 + Math.random() * 12;
+    this.speed = 0.06 + Math.random() * 0.1;
+    this.dirX = Math.random() < 0.5 ? 1 : -1;
+    this.tailPhase = Math.random() * Math.PI * 2;
+    this.antennaPhase = Math.random() * Math.PI * 2;
+    this.legPhase = Math.random() * Math.PI * 2;
+    this.pauseTimer = Math.random() * 2;
+    this.isPaused = Math.random() < 0.4;
+  }
+  update(dt) {
+    this.pauseTimer -= dt;
+    if (this.pauseTimer <= 0) {
+      this.isPaused = !this.isPaused;
+      this.pauseTimer = this.isPaused ? (2 + Math.random() * 3) : (2 + Math.random() * 3);
+      if (!this.isPaused && Math.random() < 0.25) {
+        this.dirX *= -1;
+      }
+    }
+
+    if (!this.isPaused) {
+      // Walking pace synchronized with leg cycle
+      const rhythm = 0.7 + Math.sin(this.legPhase * 2) * 0.3;
+      this.x += this.dirX * this.speed * rhythm * dt * 60;
+      this.legPhase += 4 * dt;
+    } else {
+      this.legPhase += 0.2 * dt;
+    }
+
+    this.tailPhase += 1.5 * dt;
+    this.antennaPhase += 2 * dt;
+
+    if (this.x < 50) { this.x = 50; this.dirX = 1; }
+    if (this.x > W - 50) { this.x = W - 50; this.dirX = -1; }
+  }
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    if (this.dirX < 0) ctx.scale(-1, 1);
+    drawLobster(this);
+    ctx.restore();
+  }
+}
+
+class Shell {
+  constructor(x) {
+    this.x = x;
+    this.y = H - 32 - Math.random() * 8;
+    this.size = 10 + Math.random() * 12;
+    this.hasPearl = Math.random() < 0.25;
+    this.swayPhase = Math.random() * Math.PI * 2;
+  }
+  update(dt) {
+    this.swayPhase += 1.5 * dt;
+  }
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    drawShell(this);
+    ctx.restore();
+  }
+}
+
+class Shark {
+  constructor() {
+    this.active = false;
+    this.spawnTimer = 15 + Math.random() * 25;
+    this.size = 45 + Math.random() * 25;
+    this.speed = 1.5 + Math.random() * 1;
+    this.x = -this.size * 3;
+    this.y = 100 + Math.random() * (H - 250);
+    this.dirX = 1;
+    this.tailPhase = 0;
+    this.targetFish = null;
+    this.eatCount = 0;
+    this.maxEat = 3 + Math.floor(Math.random() * 3);
+    this.chaseSpeed = 2.5;
+    this.mouthOpen = 0; // 0 = closed, 1 = fully open
+    this.mouthPhase = 0;
+    this.isAttacking = false;
+  }
+  spawn() {
+    this.active = true;
+    this.eatCount = 0;
+    this.maxEat = 3 + Math.floor(Math.random() * 3);
+    this.y = 80 + Math.random() * (H - 200);
+    // 从左边或右边进入
+    if (Math.random() < 0.5) {
+      this.x = -this.size * 2;
+      this.dirX = 1;
+    } else {
+      this.x = W + this.size * 2;
+      this.dirX = -1;
+    }
+  }
+  update(dt) {
+    if (!this.active) {
+      this.spawnTimer -= dt;
+      if (this.spawnTimer <= 0) {
+        this.spawn();
+      }
+      return;
+    }
+
+    this.tailPhase += 8 * dt;
+    this.mouthPhase += dt * 6;
+
+    // 寻找最近的鱼作为目标
+    let nearestDist = 400;
+    this.targetFish = null;
+    for (const fish of fishes) {
+      if (!fish.alive) continue;
+      const dx = fish.x - this.x;
+      const dy = fish.y - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        this.targetFish = fish;
+      }
+    }
+
+    if (this.targetFish) {
+      // 追逐目标鱼
+      const dx = this.targetFish.x - this.x;
+      const dy = this.targetFish.y - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      // 调整方向朝向鱼
+      const targetDirX = dx > 0 ? 1 : -1;
+      this.dirX += (targetDirX - this.dirX) * 0.05;
+
+      // Lunge mechanic
+      let currentSpeed = this.chaseSpeed;
+      if (dist < this.size * 2) {
+        currentSpeed = this.chaseSpeed * 1.8; // Burst of speed
+        this.tailPhase += 12 * dt; // Faster tail during lunge
+      }
+
+      // 朝鱼的方向移动
+      const moveX = (dx / dist) * currentSpeed * dt * 60;
+      const moveY = (dy / dist) * currentSpeed * 0.4 * dt * 60;
+      this.x += moveX;
+      this.y += moveY;
+
+      // 接近目标时张嘴攻击
+      if (dist < this.size * 1.5) {
+        this.isAttacking = true;
+        const targetOpen = Math.min(1, (this.size * 1.5 - dist) / (this.size * 1.0));
+        this.mouthOpen += (targetOpen - this.mouthOpen) * 0.2;
+      } else {
+        this.isAttacking = false;
+        this.mouthOpen += (0.15 - this.mouthOpen) * 0.1;
+      }
+
+      // 吃到鱼了
+      if (dist < this.size * 0.7) {
+        createBiteEffect(this.targetFish.x, this.targetFish.y, this.targetFish.colorSet);
+        this.targetFish.alive = false;
+        this.eatCount++;
+        // 咬的瞬间张到最大然后迅速合上
+        this.mouthOpen = 1;
+        setTimeout(() => { if(this.active) this.mouthOpen = 0.1; }, 150);
+        
+        // 吃完足够数量就离开
+        if (this.eatCount >= this.maxEat) {
+          this.targetFish = null;
+        }
+      }
+    } else {
+      // 没有目标或吃饱了就继续向前游，嘴微微张开
+      this.isAttacking = false;
+      this.x += this.dirX * this.speed * dt * 60;
+      this.mouthOpen += (0.08 + Math.sin(this.mouthPhase) * 0.04 - this.mouthOpen) * 0.05;
+    }
+
+    // 离开屏幕后消失，设置下一次出现时间
+    if ((this.dirX > 0 && this.x > W + this.size * 3) ||
+        (this.dirX < 0 && this.x < -this.size * 3)) {
+      this.active = false;
+      this.spawnTimer = 20 + Math.random() * 30;
+      this.mouthOpen = 0;
+    }
+  }
+  draw() {
+    if (!this.active) return;
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    if (this.dirX < 0) ctx.scale(-1, 1);
+    drawShark(this);
+    ctx.restore();
+  }
+}
+
+class Jellyfish {
+  constructor() {
+    this.reset();
+    this.x = Math.random() * W;
+    this.y = Math.random() * H * 0.6;
+  }
+  reset() {
+    this.size = 15 + Math.random() * 20;
+    this.hue = 180 + Math.random() * 60;
+    this.speed = 0.15 + Math.random() * 0.25;
+    this.x = Math.random() * W;
+    this.y = H + this.size * 2;
+    this.dirX = (Math.random() - 0.5) * 0.4;
+    this.pulsePhase = Math.random() * Math.PI * 2;
+    this.tentaclePhase = Math.random() * Math.PI * 2;
+    this.floatPhase = Math.random() * Math.PI * 2;
+  }
+  update(dt) {
+    this.pulsePhase += 3 * dt;
+    this.tentaclePhase += 2 * dt;
+    this.floatPhase += 1.5 * dt;
+
+    this.y -= this.speed * dt * 60;
+    this.y += Math.sin(this.floatPhase) * 0.2 * dt * 60;
+    this.x += this.dirX * dt * 60;
+    this.x += Math.sin(this.floatPhase * 0.7) * 0.15 * dt * 60;
+
+    if (this.x < this.size || this.x > W - this.size) this.dirX *= -1;
+    if (this.y < -this.size * 3) this.reset();
+  }
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    drawJellyfish(this);
+    ctx.restore();
+  }
+}
+
+class Fish {
+  constructor() {
+    this.reset();
+    this.x = Math.random() * W;
+    this.y = Math.random() * H;
+  }
+  reset() {
+    this.size = 12 + Math.random() * 22;
+    this.colorSet = fishColors[Math.floor(Math.random() * fishColors.length)];
+    this.speed = 0.4 + Math.random() * 1.2;
+    this.x = -this.size * 3;
+    this.y = Math.random() * H;
+    this.dirX = 1;
+    this.dirY = (Math.random() - 0.5) * 0.5;
+    this.wobblePhase = Math.random() * Math.PI * 2;
+    this.wobbleSpeed = 1 + Math.random() * 2;
+    this.wobbleAmp = 0.3 + Math.random() * 0.8;
+    this.tailPhase = Math.random() * Math.PI * 2;
+    this.targetFood = null;
+    this.alive = true;
+    this.drawFn = drawFuncs[Math.floor(Math.random() * drawFuncs.length)];
+    this.targetDirX = 1;
+  }
+  update(dt) {
+    this.wobblePhase += this.wobbleSpeed * dt;
+
+    // Mouse Avoidance
+    const mdx = mouse.x - this.x;
+    const mdy = mouse.y - this.y;
+    const mdist2 = mdx * mdx + mdy * mdy;
+    if (mdist2 < 150 * 150) {
+      const mdist = Math.sqrt(mdist2);
+      const push = (1 - mdist / 150) * 3;
+      this.x -= (mdx / mdist) * push;
+      this.y -= (mdy / mdist) * push;
+      this.tailPhase += 10 * dt; // Faster tail when escaping
+      this.targetFood = null; // Ignore food when scared
+    }
+
+    // Shark Avoidance (Panic)
+    if (shark.active) {
+      const sdx = shark.x - this.x;
+      const sdy = shark.y - this.y;
+      const sdist2 = sdx * sdx + sdy * sdy;
+      if (sdist2 < 200 * 200) {
+        const sdist = Math.sqrt(sdist2);
+        const escapeSpeed = 4.0 * (1 - sdist / 200);
+        this.x -= (sdx / sdist) * escapeSpeed;
+        this.y -= (sdy / sdist) * escapeSpeed;
+        this.tailPhase += 15 * dt; // Violent tail wag
+        this.targetFood = null;
+      }
+    }
+
+    if (this.targetFood && this.targetFood.alive) {
+      const dx = this.targetFood.x - this.x;
+      const dy = this.targetFood.y - this.y;
+      const dist2 = dx * dx + dy * dy;
+      if (dist2 < 300 * 300) {
+        const dist = Math.sqrt(dist2);
+        const eatSpeed = this.speed * 2.5;
+        this.x += (dx / dist) * eatSpeed * dt * 60;
+        this.y += (dy / dist) * eatSpeed * dt * 60;
+        if (dist > this.size + 15) {
+          this.targetDirX = dx > 0 ? 1 : -1;
+        }
+        this.dirX += (this.targetDirX - this.dirX) * 0.06;
+        this.tailPhase += 3 * dt;
+        if (dist < this.size + 5) {
+          this.targetFood.amount -= 0.8 * dt;
+          if (this.targetFood.amount <= 0) {
+            this.targetFood.alive = false;
+            this.targetFood = null;
+          }
+        }
+        return;
+      } else {
+        this.targetFood = null;
+      }
+    }
+
+    this.tailPhase += 6 * dt;
+    this.dirX += (1 - this.dirX) * 0.02;
+    this.y += this.dirY * dt * 60;
+    this.y += Math.sin(this.wobblePhase) * this.wobbleAmp * dt * 60;
+    this.x += this.dirX * this.speed * dt * 60;
+
+    if (this.y < 40) this.dirY += 0.02;
+    if (this.y > H - 40) this.dirY -= 0.02;
+    if (Math.random() < 0.005) this.dirY = (Math.random() - 0.5) * 0.5;
+
+    if (this.x > W + this.size * 4) this.reset();
+    if (this.x < -this.size * 4) this.x = W + this.size * 3;
+  }
+  findNearestFood(foods) {
+    if (this.targetFood && this.targetFood.alive) return;
+    let minDist2 = 300 * 300;
+    let nearest = null;
+    for (const f of foods) {
+      if (!f.alive || f.amount <= 0) continue;
+      const dx = f.x - this.x;
+      const dy = f.y - this.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < minDist2) { minDist2 = d2; nearest = f; }
+    }
+    this.targetFood = nearest;
+  }
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    if (this.dirX < 0) ctx.scale(-1, 1);
+    this.drawFn(this);
+    ctx.restore();
+  }
+}
+
+// ==================== Food ====================
+
+class FoodParticle {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.alive = true;
+    this.amount = 1.0;
+    this.vx = (Math.random() - 0.5) * 1.5;
+    this.vy = -1.5 + Math.random() * 1;
+    this.radius = 2.5 + Math.random() * 2;
+    this.color = `hsl(${30 + Math.random() * 20}, 80%, ${50 + Math.random() * 20}%)`;
+    this.sinkSpeed = 0;
+    this.floating = true;
+    this.floatPhase = Math.random() * Math.PI * 2;
+  }
+  update(dt) {
+    if (!this.alive) return;
+    this.floatPhase += dt * 2;
+    if (this.floating) {
+      this.vy += 0.02 * dt * 60;
+      this.x += this.vx * dt * 60;
+      this.y += this.vy * dt * 60;
+      this.vx *= 0.99;
+      if (this.vy > 0.3) this.floating = false;
+    } else {
+      this.sinkSpeed += 0.15 * dt * 60;
+      this.y += this.sinkSpeed * dt * 60;
+      this.x += Math.sin(this.floatPhase) * 0.3;
+    }
+    if (this.amount <= 0 || this.y > H + 20) this.alive = false;
+  }
+  draw() {
+    if (!this.alive) return;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius * this.amount, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.globalAlpha = Math.min(this.amount, 1);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+class BiteParticle {
+  constructor(x, y, color) {
+    this.x = x;
+    this.y = y;
+    this.vx = (Math.random() - 0.5) * 6;
+    this.vy = (Math.random() - 0.5) * 6;
+    this.radius = 1 + Math.random() * 2;
+    this.color = color;
+    this.life = 1.0;
+    this.decay = 0.02 + Math.random() * 0.03;
+  }
+  update(dt) {
+    this.x += this.vx * dt * 60;
+    this.y += this.vy * dt * 60;
+    this.vx *= 0.95;
+    this.vy *= 0.95;
+    this.life -= this.decay;
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.globalAlpha = this.life;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+let biteParticles = [];
+function createBiteEffect(x, y, colorSet) {
+  const count = 15 + Math.floor(Math.random() * 10);
+  for (let i = 0; i < count; i++) {
+    biteParticles.push(new BiteParticle(x, y, colorSet[Math.floor(Math.random() * 3)]));
+  }
+  // Also some bubbles
+  for (let i = 0; i < 8; i++) {
+    const b = new Bubble();
+    b.x = x + (Math.random() - 0.5) * 20;
+    b.y = y + (Math.random() - 0.5) * 20;
+    b.speed *= 2;
+    bubbles.push(b);
+  }
+}
+
+// ==================== Bubbles ====================
+
+class Bubble {
+  constructor() {
+    this.reset();
+    this.y = Math.random() * H;
+  }
+  reset() {
+    this.x = Math.random() * W;
+    this.y = H + 10;
+    this.r = 2 + Math.random() * 6;
+    this.speed = 0.3 + Math.random() * 0.8;
+    this.wobblePhase = Math.random() * Math.PI * 2;
+  }
+  update(dt) {
+    this.y -= this.speed * dt * 60;
+    this.wobblePhase += dt * 1.5;
+    this.x += Math.sin(this.wobblePhase) * 0.3;
+    if (this.y < -10) this.reset();
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(180,220,255,0.35)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(this.x - this.r * 0.3, this.y - this.r * 0.3, this.r * 0.3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fill();
+  }
+}
+
+// ==================== Marine Snow ====================
+
+class MarineSnow {
+  constructor() {
+    this.reset();
+    this.y = Math.random() * H;
+  }
+  reset() {
+    this.x = Math.random() * W;
+    this.y = -10;
+    this.size = 0.5 + Math.random() * 1.5;
+    this.speed = 0.2 + Math.random() * 0.4;
+    this.drift = (Math.random() - 0.5) * 0.2;
+    this.opacity = 0.1 + Math.random() * 0.3;
+  }
+  update(dt) {
+    this.y += this.speed * dt * 60;
+    this.x += this.drift * dt * 60;
+    if (this.y > H + 10 || this.x < -10 || this.x > W + 10) this.reset();
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+    ctx.fill();
+  }
+}
+
+// ==================== Aquatic Plants ====================
+
+// 1. Kelp - tall wavy strands with leaves (smooth wave propagation)
+class Kelp {
+  constructor(x) {
+    this.x = x;
+    this.segments = 10 + Math.floor(Math.random() * 8);
+    this.segLen = 14 + Math.random() * 6;
+    this.phase = Math.random() * Math.PI * 2;
+    this.hue = 100 + Math.random() * 40;
+    this.width = 3 + Math.random() * 3;
+    this.leafCount = 3 + Math.floor(Math.random() * 4);
+    this.waveSpeed = 0.5 + Math.random() * 0.3;
+    this.waveAmp = 0.7 + Math.random() * 0.3;
+  }
+  draw(time) {
+    const pts = [];
+    for (let i = 0; i <= this.segments; i++) {
+      const t = i / this.segments;
+      const damping = 1 - Math.pow(1 - t, 1.8);
+      const phaseDelay = t * 2.0;
+      const sway = Math.sin(time * this.waveSpeed + this.phase + phaseDelay) * (4 + t * 6) * this.waveAmp;
+      const secondarySway = Math.sin(time * this.waveSpeed * 0.7 + this.phase + phaseDelay * 1.3) * (1 + t * 2) * this.waveAmp;
+      pts.push({ x: this.x + sway + secondarySway, y: H - i * this.segLen });
+    }
+    ctx.beginPath();
+    ctx.lineWidth = this.width;
+    ctx.lineCap = 'round';
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      const prev = pts[i - 1];
+      const curr = pts[i];
+      const midX = (prev.x + curr.x) / 2;
+      const midY = (prev.y + curr.y) / 2;
+      ctx.quadraticCurveTo(prev.x, prev.y, midX, midY);
+    }
+    ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+    ctx.strokeStyle = `hsla(${this.hue}, 55%, 28%, 0.8)`;
+    ctx.stroke();
+    for (let j = 0; j < this.leafCount; j++) {
+      const idx = 2 + Math.floor((j / this.leafCount) * (pts.length - 3));
+      if (idx >= pts.length) continue;
+      const p = pts[idx];
+      const side = j % 2 === 0 ? 1 : -1;
+      const leafSway = Math.sin(time * this.waveSpeed * 1.5 + this.phase + j * 1.2) * 3;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.quadraticCurveTo(p.x + side * 22 + leafSway, p.y - 15, p.x + side * 32 + leafSway, p.y + 3);
+      ctx.quadraticCurveTo(p.x + side * 18 + leafSway, p.y + 6, p.x, p.y);
+      ctx.fillStyle = `hsla(${this.hue + 10}, 50%, 32%, 0.65)`;
+      ctx.fill();
+    }
+  }
+}
+
+// 2. Seagrass - short wide flat blades (smooth wave propagation)
+class Seagrass {
+  constructor(x) {
+    this.x = x;
+    this.blades = 3 + Math.floor(Math.random() * 4);
+    this.height = 40 + Math.random() * 50;
+    this.phase = Math.random() * Math.PI * 2;
+    this.hue = 110 + Math.random() * 30;
+    this.bladeData = [];
+    for (let i = 0; i < this.blades; i++) {
+      this.bladeData.push({
+        hScale: 0.7 + Math.random() * 0.3,
+        w: 5 + Math.random() * 3,
+        phaseOffset: Math.random() * 1.0,
+      });
+    }
+    this.waveSpeed = 0.6 + Math.random() * 0.3;
+  }
+  draw(time) {
+    for (let b = 0; b < this.blades; b++) {
+      const bx = this.x + (b - this.blades / 2) * 8;
+      const h = this.height * this.bladeData[b].hScale;
+      const bladeW = this.bladeData[b].w;
+      const phaseOffset = this.bladeData[b].phaseOffset;
+      const t = 0.5;
+      const damping = Math.pow(t, 1.2);
+      const sway = Math.sin(time * this.waveSpeed + this.phase + phaseOffset) * (3 + t * 4) * damping;
+      const tipSway = Math.sin(time * this.waveSpeed + this.phase + phaseOffset + 1.0) * (5 + t * 6) * damping;
+
+      ctx.beginPath();
+      ctx.moveTo(bx - bladeW / 2, H);
+      ctx.quadraticCurveTo(bx - bladeW / 2 + sway * 0.3, H - h * 0.5, bx + tipSway - bladeW / 3, H - h);
+      ctx.quadraticCurveTo(bx + tipSway + bladeW / 3, H - h + 3, bx + bladeW / 2 + sway * 0.3, H - h * 0.5);
+      ctx.quadraticCurveTo(bx + bladeW / 2, H - h * 0.3, bx + bladeW / 2, H);
+      ctx.closePath();
+      const g = ctx.createLinearGradient(bx, H, bx, H - h);
+      g.addColorStop(0, `hsla(${this.hue}, 45%, 22%, 0.8)`);
+      g.addColorStop(1, `hsla(${this.hue + 15}, 50%, 38%, 0.7)`);
+      ctx.fillStyle = g;
+      ctx.fill();
+    }
+  }
+}
+
+// 3. Coral Branch - tree-like branching structure (smooth sway per depth)
+class CoralBranch {
+  constructor(x) {
+    this.x = x;
+    this.branches = [];
+    this.phase = Math.random() * Math.PI * 2;
+    const hue = Math.random() < 0.5 ? 350 + Math.random() * 20 : 15 + Math.random() * 20;
+    this.hue = hue;
+    this.height = 50 + Math.random() * 40;
+    this.waveSpeed = 0.4 + Math.random() * 0.2;
+    this.buildBranches(0, 0, -Math.PI / 2, this.height, 4, 3);
+  }
+  buildBranches(x, y, angle, len, width, depth) {
+    if (depth <= 0 || len < 5) return;
+    const ex = x + Math.cos(angle) * len;
+    const ey = y + Math.sin(angle) * len;
+    this.branches.push({ x1: x, y1: y, x2: ex, y2: ey, w: width, depth });
+    const spread = 0.4 + Math.random() * 0.3;
+    this.buildBranches(ex, ey, angle - spread, len * 0.68, width * 0.7, depth - 1);
+    this.buildBranches(ex, ey, angle + spread, len * 0.72, width * 0.65, depth - 1);
+  }
+  draw(time) {
+    ctx.lineCap = 'round';
+    for (const b of this.branches) {
+      const depthRatio = b.w / 4;
+      const swayAmount = Math.sin(time * this.waveSpeed + this.phase + b.depth * 0.8) * (2 + (1 - depthRatio) * 3);
+      ctx.beginPath();
+      ctx.moveTo(this.x + b.x1, H + b.y1);
+      ctx.lineTo(this.x + b.x2 + swayAmount, H + b.y2);
+      ctx.strokeStyle = `hsla(${this.hue}, 60%, ${28 + depthRatio * 15}%, 0.85)`;
+      ctx.lineWidth = b.w;
+      ctx.stroke();
+    }
+    const tips = this.branches.filter(b => b.w < 1.5);
+    for (const t of tips) {
+      const tipSway = Math.sin(time * this.waveSpeed + this.phase + t.depth * 0.8) * 4;
+      ctx.beginPath();
+      ctx.arc(this.x + t.x2 + tipSway, H + t.y2, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${this.hue + 20}, 70%, 55%, 0.7)`;
+      ctx.fill();
+    }
+  }
+}
+
+// 4. Sea Anemone - wavy tentacles from a base (smooth flow)
+class SeaAnemone {
+  constructor(x) {
+    this.x = x;
+    this.tentacles = 8 + Math.floor(Math.random() * 6);
+    this.phase = Math.random() * Math.PI * 2;
+    this.hue = Math.random() < 0.5 ? 280 + Math.random() * 30 : 320 + Math.random() * 30;
+    this.baseWidth = 20 + Math.random() * 15;
+    this.height = 35 + Math.random() * 25;
+    this.waveSpeed = 0.6 + Math.random() * 0.3;
+  }
+  draw(time) {
+    ctx.beginPath();
+    ctx.ellipse(this.x, H - 2, this.baseWidth, 10, 0, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${this.hue}, 40%, 30%, 0.7)`;
+    ctx.fill();
+
+    for (let i = 0; i < this.tentacles; i++) {
+      const angle = -Math.PI + (i / (this.tentacles - 1)) * Math.PI;
+      const baseX = this.x + Math.cos(angle) * this.baseWidth * 0.7;
+      const baseSway = Math.sin(time * this.waveSpeed + this.phase + i * 0.6) * 4;
+      const midSway = Math.sin(time * this.waveSpeed + this.phase + i * 0.6 + 0.8) * 7;
+      const tipSway = Math.sin(time * this.waveSpeed + this.phase + i * 0.6 + 1.5) * 10;
+      const tipX = baseX + tipSway + Math.cos(angle) * 15;
+      const tipY = H - 2 - this.height - Math.sin(i * 0.7) * 10;
+      const midY = H - this.height * 0.5;
+
+      ctx.beginPath();
+      ctx.moveTo(baseX, H - 8);
+      ctx.quadraticCurveTo(baseX + midSway, midY, tipX, tipY);
+      ctx.strokeStyle = `hsla(${this.hue}, 55%, 45%, 0.7)`;
+      ctx.lineWidth = 3 - i * 0.1;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, 3, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${this.hue + 30}, 65%, 60%, 0.8)`;
+      ctx.fill();
+    }
+  }
+}
+
+// 5. Mushroom Coral - dome shaped with ridges (smooth sway)
+class MushroomCoral {
+  constructor(x) {
+    this.x = x;
+    this.width = 25 + Math.random() * 20;
+    this.height = 18 + Math.random() * 12;
+    this.phase = Math.random() * Math.PI * 2;
+    this.hue = Math.random() < 0.5 ? 180 + Math.random() * 30 : 45 + Math.random() * 20;
+    this.ridges = 5 + Math.floor(Math.random() * 4);
+    this.waveSpeed = 0.4 + Math.random() * 0.2;
+  }
+  draw(time) {
+    const sway = Math.sin(time * this.waveSpeed + this.phase) * 1.5;
+    const w = this.width;
+    const h = this.height;
+
+    ctx.beginPath();
+    ctx.moveTo(this.x - 6, H);
+    ctx.quadraticCurveTo(this.x - 4 + sway * 0.2, H - 12, this.x + sway * 0.3, H - 18);
+    ctx.quadraticCurveTo(this.x + 4 + sway * 0.2, H - 12, this.x + 6, H);
+    ctx.fillStyle = `hsla(${this.hue}, 35%, 25%, 0.75)`;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.ellipse(this.x + sway, H - 18 - h * 0.3, w, h, 0, 0, Math.PI * 2);
+    const g = ctx.createRadialGradient(this.x + sway, H - 18 - h * 0.5, 2, this.x + sway, H - 18 - h * 0.3, w);
+    g.addColorStop(0, `hsla(${this.hue + 15}, 55%, 48%, 0.8)`);
+    g.addColorStop(1, `hsla(${this.hue}, 45%, 30%, 0.75)`);
+    ctx.fillStyle = g;
+    ctx.fill();
+
+    ctx.strokeStyle = `hsla(${this.hue + 20}, 50%, 40%, 0.4)`;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < this.ridges; i++) {
+      const a = -0.7 + (i / (this.ridges - 1)) * 1.4;
+      const rx = this.x + sway + Math.cos(a) * w * 0.85;
+      const ry = H - 18 - h * 0.3 + Math.sin(a) * h * 0.85;
+      ctx.beginPath();
+      ctx.moveTo(this.x + sway, H - 18 - h * 0.3);
+      ctx.lineTo(rx, ry);
+      ctx.stroke();
+    }
+  }
+}
+
+// 6. Fan Coral - flat fan/leaf shape with veins (smooth sway)
+class FanCoral {
+  constructor(x) {
+    this.x = x;
+    this.width = 30 + Math.random() * 25;
+    this.height = 50 + Math.random() * 35;
+    this.phase = Math.random() * Math.PI * 2;
+    this.hue = Math.random() < 0.5 ? 340 + Math.random() * 25 : 270 + Math.random() * 20;
+    this.veins = 5 + Math.floor(Math.random() * 3);
+    this.waveSpeed = 0.4 + Math.random() * 0.2;
+  }
+  draw(time) {
+    const sway = Math.sin(time * this.waveSpeed + this.phase) * 2.5;
+    const w = this.width;
+    const h = this.height;
+
+    ctx.beginPath();
+    ctx.moveTo(this.x, H);
+    ctx.lineTo(this.x + sway * 0.2, H - 15);
+    ctx.strokeStyle = `hsla(${this.hue}, 40%, 25%, 0.8)`;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(this.x + sway * 0.2, H - 15);
+    ctx.quadraticCurveTo(this.x - w + sway, H - 15 - h * 0.6, this.x - w * 0.6 + sway, H - 15 - h);
+    ctx.quadraticCurveTo(this.x + sway, H - 15 - h - 10, this.x + w * 0.6 + sway, H - 15 - h);
+    ctx.quadraticCurveTo(this.x + w + sway, H - 15 - h * 0.6, this.x + sway * 0.2, H - 15);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(this.x, H - 15, this.x, H - 15 - h);
+    g.addColorStop(0, `hsla(${this.hue}, 50%, 30%, 0.75)`);
+    g.addColorStop(1, `hsla(${this.hue + 15}, 55%, 42%, 0.65)`);
+    ctx.fillStyle = g;
+    ctx.fill();
+
+    ctx.strokeStyle = `hsla(${this.hue + 20}, 45%, 35%, 0.35)`;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < this.veins; i++) {
+      const t = (i + 1) / (this.veins + 1);
+      const vx = this.x + sway * 0.2 + (sway - sway * 0.2) * t;
+      const vy = H - 15 - h * t;
+      ctx.beginPath();
+      ctx.moveTo(this.x + sway * 0.2, H - 15);
+      ctx.quadraticCurveTo(vx - w * 0.3, vy, vx - w * 0.5 * (1 - t), H - 15 - h * 0.95);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(this.x + sway * 0.2, H - 15);
+      ctx.quadraticCurveTo(vx + w * 0.3, vy, vx + w * 0.5 * (1 - t), H - 15 - h * 0.95);
+      ctx.stroke();
+    }
+  }
+}
+
+// 7. Mossy Rock - base rock with small growths (smooth sway)
+class MossyRock {
+  constructor(x) {
+    this.x = x;
+    this.w = 30 + Math.random() * 25;
+    this.h = 15 + Math.random() * 10;
+    this.phase = Math.random() * Math.PI * 2;
+    this.mossTufts = 3 + Math.floor(Math.random() * 4);
+    this.tufts = [];
+    for (let i = 0; i < this.mossTufts; i++) {
+      this.tufts.push({
+        ox: (Math.random() - 0.5) * this.w * 1.4,
+        h: 8 + Math.random() * 14,
+        w: 3 + Math.random() * 4,
+        hue: 95 + Math.random() * 40,
+        phaseOffset: Math.random() * 1.5,
+      });
+    }
+    this.waveSpeed = 0.5 + Math.random() * 0.3;
+  }
+  draw(time) {
+    ctx.beginPath();
+    ctx.moveTo(this.x - this.w, H);
+    ctx.quadraticCurveTo(this.x - this.w * 0.8, H - this.h * 1.2, this.x - this.w * 0.3, H - this.h);
+    ctx.quadraticCurveTo(this.x + this.w * 0.2, H - this.h * 1.3, this.x + this.w * 0.5, H - this.h * 0.8);
+    ctx.quadraticCurveTo(this.x + this.w * 0.9, H - this.h * 0.5, this.x + this.w, H);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(this.x, H - this.h, this.x, H);
+    g.addColorStop(0, '#3a5a4a');
+    g.addColorStop(1, '#2a4035');
+    ctx.fillStyle = g;
+    ctx.fill();
+
+    for (const t of this.tufts) {
+      const sway = Math.sin(time * this.waveSpeed + this.phase + t.phaseOffset) * 1.5;
+      for (let j = 0; j < 3; j++) {
+        const ox = t.ox + (j - 1) * t.w * 0.6;
+        const tipSway = Math.sin(time * this.waveSpeed + this.phase + t.phaseOffset + 0.8) * 2;
+        ctx.beginPath();
+        ctx.moveTo(this.x + ox, H - this.h * 0.6);
+        ctx.quadraticCurveTo(this.x + ox + sway, H - this.h * 0.6 - t.h * 0.6, this.x + ox + tipSway, H - this.h * 0.6 - t.h);
+        ctx.strokeStyle = `hsla(${t.hue}, 50%, 35%, 0.7)`;
+        ctx.lineWidth = t.w * 0.4;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+// 8. Tall Kelp Forest - thick stalks with round leaves (smooth wave propagation)
+class KelpForest {
+  constructor(x) {
+    this.x = x;
+    this.stalks = 2 + Math.floor(Math.random() * 3);
+    this.phase = Math.random() * Math.PI * 2;
+    this.waveSpeed = 0.4 + Math.random() * 0.2;
+    this.stalkData = [];
+    for (let i = 0; i < this.stalks; i++) {
+      const leaves = 3 + Math.floor(Math.random() * 3);
+      const leafRadii = [];
+      for (let j = 0; j < leaves; j++) leafRadii.push(8 + Math.random() * 6);
+      this.stalkData.push({
+        ox: (i - this.stalks / 2) * 12 + (Math.random() - 0.5) * 8,
+        height: 90 + Math.random() * 60,
+        hue: 100 + Math.random() * 35,
+        leaves,
+        leafRadii,
+        leafPhaseOffsets: Array.from({ length: leaves }, () => Math.random() * 1.5),
+      });
+    }
+  }
+  draw(time) {
+    for (const s of this.stalkData) {
+      const pts = [];
+      const segs = 12;
+      for (let i = 0; i <= segs; i++) {
+        const t = i / segs;
+        const phaseDelay = t * 1.8;
+        const mainSway = Math.sin(time * this.waveSpeed + this.phase + s.ox * 0.1 + phaseDelay) * (2 + t * 6);
+        const secSway = Math.sin(time * this.waveSpeed * 0.7 + this.phase + s.ox * 0.1 + phaseDelay * 1.2) * (1 + t * 3);
+        pts.push({ x: this.x + s.ox + mainSway + secSway, y: H - t * s.height });
+      }
+      ctx.beginPath();
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) {
+        const prev = pts[i - 1];
+        const curr = pts[i];
+        const midX = (prev.x + curr.x) / 2;
+        const midY = (prev.y + curr.y) / 2;
+        ctx.quadraticCurveTo(prev.x, prev.y, midX, midY);
+      }
+      ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+      ctx.strokeStyle = `hsla(${s.hue}, 50%, 25%, 0.8)`;
+      ctx.stroke();
+
+      for (let j = 0; j < s.leaves; j++) {
+        const idx = 2 + Math.floor((j / s.leaves) * (pts.length - 3));
+        if (idx >= pts.length) continue;
+        const p = pts[idx];
+        const side = j % 2 === 0 ? 1 : -1;
+        const lr = s.leafRadii[j];
+        const leafSway = Math.sin(time * this.waveSpeed * 1.2 + this.phase + s.leafPhaseOffsets[j]) * 2;
+        ctx.beginPath();
+        ctx.ellipse(p.x + side * (12 + leafSway), p.y, lr, lr * 0.6, side * 0.3, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${s.hue + 10}, 50%, 32%, 0.55)`;
+        ctx.fill();
+      }
+    }
+  }
+}
+
+// Plant draw functions array
+const plantDrawFns = [Kelp, Seagrass, CoralBranch, SeaAnemone, MushroomCoral, FanCoral, MossyRock, KelpForest];
+
+// ==================== Init ====================
+
+const fishes = Array.from({ length: 30 }, () => new Fish());
+const bubbles = Array.from({ length: 30 }, () => new Bubble());
+const plants = [];
+// Dense ground cover
+const plantCount = 14 + Math.floor(Math.random() * 6);
+for (let i = 0; i < plantCount; i++) {
+  const PlantClass = plantDrawFns[Math.floor(Math.random() * plantDrawFns.length)];
+  plants.push(new PlantClass(40 + (W - 80) * (i / (plantCount - 1)) + (Math.random() - 0.5) * 50));
+}
+
+// New sea creatures
+const crabs = Array.from({ length: 4 }, () => new Crab(80 + Math.random() * (W - 160)));
+const turtles = Array.from({ length: 3 }, () => new Turtle());
+const lobsters = Array.from({ length: 3 }, () => new Lobster(100 + Math.random() * (W - 200)));
+const shells = Array.from({ length: 6 }, () => new Shell(50 + Math.random() * (W - 100)));
+const jellyfishes = Array.from({ length: 5 }, () => new Jellyfish());
+const marineSnow = Array.from({ length: 60 }, () => new MarineSnow());
+const shark = new Shark();
+
+let foods = [];
+let lastTime = performance.now();
+let time = 0;
+let frameCount = 0;
+
+const _pebSeed = 42;
+const pebbles = Array.from({ length: 25 }, (_, i) => ({
+  xRatio: ((_pebSeed * (i + 1) * 7919) % 10000) / 10000,
+  r: 2 + ((_pebSeed * (i + 1) * 6271) % 100) / 100 * 5,
+}));
+
+function drawBackground() {
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#0a1628');
+  grad.addColorStop(0.3, '#0d2847');
+  grad.addColorStop(0.7, '#0c3060');
+  grad.addColorStop(1, '#051a2e');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Dynamic God Rays
+  ctx.save();
+  for (let i = 0; i < 7; i++) {
+    const x = W * (0.15 + i * 0.12);
+    const sway = Math.sin(time * 0.5 + i) * 30;
+    const pulse = 0.02 + Math.sin(time * 0.8 + i * 0.5) * 0.01;
+    ctx.beginPath();
+    ctx.moveTo(x - 20 + sway, 0);
+    ctx.lineTo(x - 100 + sway * 1.5, H);
+    ctx.lineTo(x + 100 + sway * 1.5, H);
+    ctx.lineTo(x + 20 + sway, 0);
+    ctx.closePath();
+    const rayGrad = ctx.createLinearGradient(x, 0, x, H);
+    rayGrad.addColorStop(0, `rgba(100, 200, 255, ${pulse * 2})`);
+    rayGrad.addColorStop(1, `rgba(100, 200, 255, 0)`);
+    ctx.fillStyle = rayGrad;
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Caustics (subtle light patterns on bottom)
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.strokeStyle = 'rgba(100, 220, 255, 0.05)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 15; i++) {
+    const cx = (i / 15) * W + Math.sin(time * 0.5 + i) * 20;
+    ctx.beginPath();
+    ctx.moveTo(cx, H - 45);
+    ctx.lineTo(cx + Math.cos(time + i) * 10, H);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  const sandGrad = ctx.createLinearGradient(0, H - 45, 0, H);
+  sandGrad.addColorStop(0, '#1a3028');
+  sandGrad.addColorStop(0.2, '#2a4a3a');
+  sandGrad.addColorStop(0.5, '#223d30');
+  sandGrad.addColorStop(1, '#1a3028');
+  ctx.fillStyle = sandGrad;
+  ctx.fillRect(0, H - 45, W, 45);
+
+  // Pebbles
+  ctx.fillStyle = 'rgba(80,120,100,0.3)';
+  for (const p of pebbles) {
+    ctx.beginPath();
+    ctx.ellipse(p.xRatio * W, H - 8 - p.r * 0.3, p.r, p.r * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function animate(now) {
+  const dt = Math.min((now - lastTime) / 1000, 0.05);
+  lastTime = now;
+  time += dt;
+  frameCount++;
+
+  drawBackground();
+  marineSnow.forEach(s => { s.update(dt); s.draw(); });
+  plants.forEach(p => p.draw(time));
+
+  // Bottom creatures (behind fishes)
+  shells.forEach(s => { s.update(dt); s.draw(); });
+  crabs.forEach(c => { c.update(dt); c.draw(); });
+  lobsters.forEach(l => { l.update(dt); l.draw(); });
+
+  foods.forEach(f => f.update(dt));
+  foods.forEach(f => f.draw());
+  if (frameCount % 60 === 0) foods = foods.filter(f => f.alive);
+
+  biteParticles.forEach(p => p.update(dt));
+  biteParticles.forEach(p => p.draw());
+  if (frameCount % 60 === 0) biteParticles = biteParticles.filter(p => p.life > 0);
+
+  // Jellyfish (mid-water)
+  jellyfishes.forEach(j => { j.update(dt); j.draw(); });
+
+  // Shark - hungry predator
+  shark.update(dt);
+  shark.draw();
+
+  fishes.forEach(fish => {
+    if (fish.alive) {
+      fish.findNearestFood(foods);
+      fish.update(dt);
+    } else {
+      // 被吃掉的鱼会在屏幕外重生
+      fish.reset();
+      fish.alive = true;
+      fish.x = -fish.size * 4;
+      fish.y = Math.random() * H;
+    }
+  });
+  if (frameCount % 3 === 0) fishes.sort((a, b) => a.y - b.y);
+  fishes.forEach(fish => fish.draw());
+
+  // Turtles (front, can be above fishes)
+  turtles.forEach(t => { t.update(dt); t.draw(); });
+
+  bubbles.forEach(b => { b.update(dt); b.draw(); });
+
+  // Vignette
+  const vignette = ctx.createRadialGradient(W / 2, H / 2, H * 0.4, W / 2, H / 2, W * 0.7);
+  vignette.addColorStop(0, 'rgba(0,0,0,0)');
+  vignette.addColorStop(1, 'rgba(0,0,0,0.4)');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, W, H);
+
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
