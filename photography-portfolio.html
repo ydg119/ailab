@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photography Portfolio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Archivo', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        'anthropic-orange': '#D4A373',
+                        'anthropic-coral': '#CD853F',
+                        'anthropic-dark': '#2D2D2D',
+                        'anthropic-light': '#FAFAF9',
+                        'anthropic-gray': '#6B6B6B',
+                        'anthropic-border': '#E5E5E5',
+                        primary: '#2D2D2D',
+                        secondary: '#D4A373',
+                        background: '#FAFAF9',
+                        text: '#2D2D2D',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .photo-card {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        .photo-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .photo-overlay {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .photo-card:hover .photo-overlay {
+            opacity: 1;
+        }
+        .filter-btn {
+            transition: all 0.3s ease;
+        }
+        .lightbox {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .lightbox.active {
+            opacity: 1;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .photo-card, .photo-overlay, .filter-btn, .lightbox {
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-background text-text font-sans antialiased">
+    <header class="fixed top-4 left-4 right-4 z-50 bg-white/80 backdrop-blur-md border border-anthropic-border rounded-2xl shadow-sm">
+        <nav class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="text-2xl font-display font-semibold text-anthropic-dark tracking-tight">
+                <svg class="w-6 h-6 inline-block mr-2 text-anthropic-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                Photography
+            </div>
+            <ul class="hidden md:flex gap-8 list-none">
+                <li><a href="#gallery" class="text-anthropic-gray hover:text-anthropic-orange transition-colors duration-200 text-sm font-medium">作品集</a></li>
+                <li><a href="#about" class="text-anthropic-gray hover:text-anthropic-orange transition-colors duration-200 text-sm font-medium">关于</a></li>
+                <li><a href="#contact" class="text-anthropic-gray hover:text-anthropic-orange transition-colors duration-200 text-sm font-medium">联系</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 pt-32 pb-20">
+        <section class="hero text-center mb-16">
+            <h1 class="text-5xl md:text-6xl font-display font-semibold text-anthropic-dark mb-6 tracking-tight">
+                摄影作品集
+            </h1>
+            <p class="text-xl text-anthropic-gray max-w-2xl mx-auto leading-relaxed">
+                捕捉光影瞬间，记录美好生活。用镜头讲述每一个动人的故事。
+            </p>
+        </section>
+
+        <div class="filter-bar flex gap-3 mb-12 flex-wrap justify-center">
+            <button class="filter-btn active px-6 py-2.5 border border-anthropic-border bg-white text-anthropic-gray rounded-full text-sm font-medium cursor-pointer hover:border-anthropic-orange hover:text-anthropic-orange" data-filter="all">
+                全部作品
+            </button>
+            <button class="filter-btn px-6 py-2.5 border border-anthropic-border bg-white text-anthropic-gray rounded-full text-sm font-medium cursor-pointer hover:border-anthropic-orange hover:text-anthropic-orange" data-filter="landscape">
+                风光
+            </button>
+            <button class="filter-btn px-6 py-2.5 border border-anthropic-border bg-white text-anthropic-gray rounded-full text-sm font-medium cursor-pointer hover:border-anthropic-orange hover:text-anthropic-orange" data-filter="portrait">
+                人像
+            </button>
+            <button class="filter-btn px-6 py-2.5 border border-anthropic-border bg-white text-anthropic-gray rounded-full text-sm font-medium cursor-pointer hover:border-anthropic-orange hover:text-anthropic-orange" data-filter="street">
+                街拍
+            </button>
+            <button class="filter-btn px-6 py-2.5 border border-anthropic-border bg-white text-anthropic-gray rounded-full text-sm font-medium cursor-pointer hover:border-anthropic-orange hover:text-anthropic-orange" data-filter="architecture">
+                建筑
+            </button>
+        </div>
+
+        <div class="gallery grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="gallery">
+            <div class="photo-card cursor-pointer" data-category="landscape">
+                <div class="relative overflow-hidden rounded-xl bg-white shadow-sm hover:shadow-lg transition-shadow duration-300">
+                    <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop" alt="晨曦山脉" class="w-full h-72 object-cover">
+                    <div class="photo-overlay absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-6">
+                        <div class="text-white">
+                            <h3 class="text-xl font-display font-semibold mb-1">晨曦山脉</h3>
+                            <p class="text-sm text-white/80">西藏 · 2026.03</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 px-2">
+                    <h3 class="text-lg font-display font-semibold text-anthropic-dark mb-2">晨曦山脉</h3>
+                    <p class="text-sm text-anthropic-gray leading-relaxed">日出时分，第一缕阳光洒在雪山之巅，金色的光芒照亮了整个山谷。</p>
+                    <div class="flex justify-between mt-3 pt-3 border-t border-anthropic-border text-xs text-anthropic-gray">
+                        <span>📍 西藏</span>
+                        <span>📅 2026.03</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="photo-card cursor-pointer" data-category="portrait">
+                <div class="relative overflow-hidden rounded-xl bg-white shadow-sm hover:shadow-lg transition-shadow duration-300">
+                    <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&h=600&fit=crop" alt="沉思" class="w-full h-72 object-cover">
+                    <div class="photo-overlay absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-6">
+                        <div class="text-white">
+                            <h3 class="text-xl font-display font-semibold mb-1">沉思</h3>
+                            <p class="text-sm text-white/80">北京 · 2026.01</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 px-2">
+                    <h3 class="text-lg font-display font-semibold text-anthropic-dark mb-2">沉思</h3>
+                    <p class="text-sm text-anthropic-gray leading-relaxed">光影交错间，捕捉人物内心深处的宁静与思考。</p>
+                    <div class="flex justify-between mt-3 pt-3 border-t border-anthropic-border text-xs text-anthropic-gray">
+                        <span>📍 北京</span>
+                        <span>📅 2026.01</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="photo-card cursor-pointer" data-category="street">
+                <div class="relative overflow-hidden rounded-xl bg-white shadow-sm hover:shadow-lg transition-shadow duration-300">
+                    <img src="https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800&h=600&fit=crop" alt="都市节奏" class="w-full h-72 object-cover">
+                    <div class="photo-overlay absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-6">
+                        <div class="text-white">
+                            <h3 class="text-xl font-display font-semibold mb-1">都市节奏</h3>
+                            <p class="text-sm text-white/80">上海 · 2025.12</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 px-2">
+                    <h3 class="text-lg font-display font-semibold text-anthropic-dark mb-2">都市节奏</h3>
+                    <p class="text-sm text-anthropic-gray leading-relaxed">繁忙的都市街头，行人匆匆，记录城市生活的律动。</p>
+                    <div class="flex justify-between mt-3 pt-3 border-t border-anthropic-border text-xs text-anthropic-gray">
+                        <span>📍 上海</span>
+                        <span>📅 2025.12</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="photo-card cursor-pointer" data-category="architecture">
+                <div class="relative overflow-hidden rounded-xl bg-white shadow-sm hover:shadow-lg transition-shadow duration-300">
+                    <img src="https://images.unsplash.com/photo-1511818966892-d7d671e672a2?w=800&h=600&fit=crop" alt="几何之美" class="w-full h-72 object-cover">
+                    <div class="photo-overlay absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-6">
+                        <div class="text-white">
+                            <h3 class="text-xl font-display font-semibold mb-1">几何之美</h3>
+                            <p class="text-sm text-white/80">深圳 · 2026.02</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 px-2">
+                    <h3 class="text-lg font-display font-semibold text-anthropic-dark mb-2">几何之美</h3>
+                    <p class="text-sm text-anthropic-gray leading-relaxed">现代建筑的线条与几何形状，展现设计的结构美学。</p>
+                    <div class="flex justify-between mt-3 pt-3 border-t border-anthropic-border text-xs text-anthropic-gray">
+                        <span>📍 深圳</span>
+                        <span>📅 2026.02</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="photo-card cursor-pointer" data-category="landscape">
+                <div class="relative overflow-hidden rounded-xl bg-white shadow-sm hover:shadow-lg transition-shadow duration-300">
+                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=600&fit=crop" alt="秋日私语" class="w-full h-72 object-cover">
+                    <div class="photo-overlay absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-6">
+                        <div class="text-white">
+                            <h3 class="text-xl font-display font-semibold mb-1">秋日私语</h3>
+                            <p class="text-sm text-white/80">杭州 · 2025.11</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 px-2">
+                    <h3 class="text-lg font-display font-semibold text-anthropic-dark mb-2">秋日私语</h3>
+                    <p class="text-sm text-anthropic-gray leading-relaxed">金黄的落叶铺满小径，秋天的色彩如诗如画。</p>
+                    <div class="flex justify-between mt-3 pt-3 border-t border-anthropic-border text-xs text-anthropic-gray">
+                        <span>📍 杭州</span>
+                        <span>📅 2025.11</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="photo-card cursor-pointer" data-category="portrait">
+                <div class="relative overflow-hidden rounded-xl bg-white shadow-sm hover:shadow-lg transition-shadow duration-300">
+                    <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&h=600&fit=crop" alt="笑容" class="w-full h-72 object-cover">
+                    <div class="photo-overlay absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-6">
+                        <div class="text-white">
+                            <h3 class="text-xl font-display font-semibold mb-1">笑容</h3>
+                            <p class="text-sm text-white/80">成都 · 2026.04</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 px-2">
+                    <h3 class="text-lg font-display font-semibold text-anthropic-dark mb-2">笑容</h3>
+                    <p class="text-sm text-anthropic-gray leading-relaxed">纯真的笑容是最美的风景，温暖人心的瞬间。</p>
+                    <div class="flex justify-between mt-3 pt-3 border-t border-anthropic-border text-xs text-anthropic-gray">
+                        <span>📍 成都</span>
+                        <span>📅 2026.04</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="photo-card cursor-pointer" data-category="street">
+                <div class="relative overflow-hidden rounded-xl bg-white shadow-sm hover:shadow-lg transition-shadow duration-300">
+                    <img src="https://images.unsplash.com/photo-1534088568595-a066f410bcda?w=800&h=600&fit=crop" alt="雨中即景" class="w-full h-72 object-cover">
+                    <div class="photo-overlay absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-6">
+                        <div class="text-white">
+                            <h3 class="text-xl font-display font-semibold mb-1">雨中即景</h3>
+                            <p class="text-sm text-white/80">广州 · 2025.10</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 px-2">
+                    <h3 class="text-lg font-display font-semibold text-anthropic-dark mb-2">雨中即景</h3>
+                    <p class="text-sm text-anthropic-gray leading-relaxed">雨季的街头，伞花绽放，别有一番韵味。</p>
+                    <div class="flex justify-between mt-3 pt-3 border-t border-anthropic-border text-xs text-anthropic-gray">
+                        <span>📍 广州</span>
+                        <span>📅 2025.10</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="photo-card cursor-pointer" data-category="architecture">
+                <div class="relative overflow-hidden rounded-xl bg-white shadow-sm hover:shadow-lg transition-shadow duration-300">
+                    <img src="https://images.unsplash.com/photo-1487958449943-2429e8be8625?w=800&h=600&fit=crop" alt="光影建筑" class="w-full h-72 object-cover">
+                    <div class="photo-overlay absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-6">
+                        <div class="text-white">
+                            <h3 class="text-xl font-display font-semibold mb-1">光影建筑</h3>
+                            <p class="text-sm text-white/80">重庆 · 2026.01</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 px-2">
+                    <h3 class="text-lg font-display font-semibold text-anthropic-dark mb-2">光影建筑</h3>
+                    <p class="text-sm text-anthropic-gray leading-relaxed">阳光透过建筑缝隙，在墙面上绘制出美丽的图案。</p>
+                    <div class="flex justify-between mt-3 pt-3 border-t border-anthropic-border text-xs text-anthropic-gray">
+                        <span>📍 重庆</span>
+                        <span>📅 2026.01</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="lightbox fixed inset-0 bg-black/90 z-[1000] hidden items-center justify-center cursor-pointer" id="lightbox">
+        <div class="lightbox-content max-w-4xl max-h-[90vh] bg-white rounded-2xl overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
+            <div class="w-full h-[500px] flex items-center justify-center" id="lightbox-image"></div>
+        </div>
+    </div>
+
+    <footer class="text-center py-12 border-t border-anthropic-border text-sm text-anthropic-gray">
+        <p>© 2026 Photography Portfolio. Designed with Anthropic brand guidelines.</p>
+    </footer>
+
+    <script>
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const photoCards = document.querySelectorAll('.photo-card');
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImage = document.getElementById('lightbox-image');
+
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry, index) => {
+                if (entry.isIntersecting) {
+                    setTimeout(() => {
+                        entry.target.classList.add('visible');
+                    }, index * 100);
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        photoCards.forEach(card => observer.observe(card));
+
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(b => {
+                    b.classList.remove('active', 'bg-anthropic-orange', 'text-white');
+                    b.classList.add('bg-white', 'text-anthropic-gray', 'border-anthropic-border');
+                });
+                btn.classList.add('active', 'bg-anthropic-orange', 'text-white');
+                btn.classList.remove('bg-white', 'text-anthropic-gray', 'border-anthropic-border');
+
+                const filter = btn.dataset.filter;
+
+                photoCards.forEach((card, index) => {
+                    if (filter === 'all' || card.dataset.category === filter) {
+                        card.style.display = 'block';
+                        setTimeout(() => {
+                            card.classList.add('visible');
+                        }, index * 50);
+                    } else {
+                        card.classList.remove('visible');
+                        setTimeout(() => {
+                            card.style.display = 'none';
+                        }, 300);
+                    }
+                });
+            });
+        });
+
+        photoCards.forEach(card => {
+            card.addEventListener('click', () => {
+                const img = card.querySelector('img');
+                lightboxImage.innerHTML = `<img src="${img.src}" alt="${img.alt}" class="max-w-full max-h-full object-contain rounded-2xl">`;
+                lightbox.classList.remove('hidden');
+                lightbox.classList.add('active', 'flex');
+            });
+        });
+
+        lightbox.addEventListener('click', () => {
+            lightbox.classList.add('hidden');
+            lightbox.classList.remove('active', 'flex');
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !lightbox.classList.contains('hidden')) {
+                lightbox.classList.add('hidden');
+                lightbox.classList.remove('active', 'flex');
+            }
+        });
+    </script>
+</body>
+</html>
