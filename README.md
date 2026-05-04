@@ -1,71 +1,70 @@
-# ailab
+# ailab 🚀
 
-一个静态网站项目集合，包含多个独立的交互式应用和教程页面。
+嘿！这是一个用 AI 搞出来的静态网站项目集合，里面有一堆好玩的页面和教程。✨
 
-## 项目结构
+## 📁 项目结构
 
 ```
 .
-├── index.html                                  # 3D 魔方交互应用
-├── aquarium.html                               # 水族馆动画效果
-├── rocket_launch.html                          # 火箭发射动画
-├── storybook.html                              # 故事书交互页面
-├── photography-portfolio.html                  # 摄影作品集展示
-├── plugin_registry_gateway.html                # 插件注册网关界面
-├── codex_workflow_tutorial.html               # Codex 工作流程教程
-├── frontend_10_years_frontend_tutorial.html   # 前端框架发展教程
-└── frontend_tech_roadmap.html                 # 前端技术栈发展路径图 (2016-2026)
+├── index.html                                  # 3D 魔方，可以拖着玩 🎲
+├── aquarium.html                               # 水族馆动画，看着挺解压 🐠
+├── rocket_launch.html                          # 火箭发射动画，噗嗤一下飞走了 🚀
+├── storybook.html                              # 故事书交互页面 📖
+├── photography-portfolio.html                  # 摄影作品集展示 📸
+├── plugin_registry_gateway.html                # 插件注册网关界面 🔌
+├── codex_workflow_tutorial.html               # 教你怎么用 Codex 干活 🤖
+├── frontend_10_years_frontend_tutorial.html   # 前端这十年都发生了啥 💻
+└── frontend_tech_roadmap.html                 # 前端技术路线图 (2016-2026) 🗺️
 ```
 
-## 页面说明
+## 🎮 都有啥好玩的？
 
-### 交互式应用
+### 能玩的应用
 
-- **index.html** - 3D 魔方交互应用
-  - 技术栈: Three.js (v0.160.0)
-  - 功能: 完整的 3D 魔方交互、粒子系统、打乱功能、快捷键支持
+- **index.html** - 3D 魔方 🎲
+  - 用 Three.js 做的，能拖着转，还能打乱重来
+  - 有粒子特效，看着挺炫的 ✨
 
-- **aquarium.html** - 水族馆动画效果页面
+- **aquarium.html** - 水族馆，鱼游来游去的 🐠🐟
 
-- **rocket_launch.html** - 火箭发射动画页面
+- **rocket_launch.html** - 火箭发射，看着挺爽 🚀💨
 
-- **storybook.html** - 故事书交互页面
+- **storybook.html** - 故事书，翻页效果 📖
 
-- **photography-portfolio.html** - 摄影作品集展示页面
+- **photography-portfolio.html** - 摄影作品展示 📸
 
-- **plugin_registry_gateway.html** - 插件注册网关界面
+- **plugin_registry_gateway.html** - 插件注册界面 🔌
 
-### 教程页面
+### 📚 教程类
 
-- **codex_workflow_tutorial.html** - 工作中正确使用 Codex 的教程
+- **codex_workflow_tutorial.html** - 怎么在工作中用 Codex，深色主题挺好看的 🤖
   - 现代深色主题，渐变背景，玻璃态效果
 
-- **frontend_10_years_frontend_tutorial.html** - 最近10年前端框架、架构与组件模块教程
+- **frontend_10_years_frontend_tutorial.html** - 讲讲前端这十年的变化 💻
 
-- **frontend_tech_roadmap.html** - 前端技术栈发展路径图 (2016-2026)
+- **frontend_tech_roadmap.html** - 从 2016 到 2026 的前端技术路线图 🗺️
 
-## 技术特点
+## 🛠️ 技术上的事儿
 
-- **纯静态**: 无需构建工具或依赖管理
-- **CDN 依赖**: Three.js 通过 unpkg.com 加载
-- **现代 CSS**: 使用 CSS 变量、渐变、backdrop-filter 等特性
-- **响应式**: 所有页面支持移动端访问
+- 都是纯静态的 HTML，不用装啥依赖 ⚡
+- Three.js 从 CDN 加载，第一次打开需要联网 🌐
+- 用了不少现代 CSS 特效，手机上也能看 📱
 
-## 本地预览
+## 👀 咋看？
 
-直接在浏览器中打开任意 HTML 文件即可预览。
+直接拿浏览器打开任意一个 HTML 文件就行，不用折腾。🎉
 
-## 部署
+## 🚀 部署
 
-可以直接部署到任何静态托管服务：
+扔到 GitHub Pages、Netlify、Vercel 这些地方都能用，反正都是静态文件。☁️
 
-- GitHub Pages
-- Netlify
-- Vercel
-- 或任何支持静态文件的服务器
+## ⚠️ 重要声明
 
-## 注意事项
+**本项目下的所有文件（包括但不限于 HTML、CSS、JavaScript 等）均由 AI（人工智能）自动生成，非人工编写。** 🤖
 
-1. **Three.js 版本**: 当前使用 v0.160.0，如需升级请测试兼容性
-2. **浏览器兼容性**: 需要支持 ES6 模块和 WebGL 的现代浏览器
-3. **网络依赖**: Three.js 从 CDN 加载，需要网络连接（首次访问）
+- 本项目仅供学习、研究和演示使用 📖
+- 如果项目中涉及的内容侵犯了您的权益，请立即联系我们，我们会尽快处理并删除相关内容 ✋
+- 本项目不对任何因使用这些内容而产生的直接或间接损失负责 ⚡
+- 项目中的教程、示例代码等内容仅供参考，不保证完全准确或适用于生产环境 ⚠️
+
+如有任何问题或侵权投诉，请通过 GitHub Issues 联系。📬
