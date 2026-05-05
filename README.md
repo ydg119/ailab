@@ -1,6 +1,6 @@
 # ailab 🚀
 
-嘿！这是一个用 AI 搞出来的静态网站项目集合，里面有一堆好玩的页面和教程。✨
+嘿！这是一个用 AI 搞出来的静态网站项目集合，里面有 11 个好玩的页面和教程。✨
 
 ## 📁 项目结构
 
@@ -14,7 +14,9 @@
 ├── plugin_registry_gateway.html                # 插件注册网关界面 🔌
 ├── codex_workflow_tutorial.html               # 教你怎么用 Codex 干活 🤖
 ├── frontend_10_years_frontend_tutorial.html   # 前端这十年都发生了啥 💻
-└── frontend_tech_roadmap.html                 # 前端技术路线图 (2016-2026) 🗺️
+├── frontend_tech_roadmap.html                 # 前端技术路线图 (2016-2026) 🗺️
+├── lotus_flower.html                          # 荷花绽放（Rough.js 手绘）🌸
+└── prototype_sketch.html                      # 产品原型草图（Rough.js 手绘）✏️
 ```
 
 ## 🎮 都有啥好玩的？
@@ -35,6 +37,10 @@
 
 - **plugin_registry_gateway.html** - 插件注册界面 🔌
 
+### 🖼️ 手绘类
+- **lotus_flower.html** - 荷花绽放，用 Rough.js 手绘风格画的 🌸
+- **prototype_sketch.html** - 产品原型草图，也是手绘风 ✏️
+
 ### 📚 教程类
 
 - **codex_workflow_tutorial.html** - 怎么在工作中用 Codex，深色主题挺好看的 🤖
@@ -47,7 +53,7 @@
 ## 🛠️ 技术上的事儿
 
 - 都是纯静态的 HTML，不用装啥依赖 ⚡
-- Three.js 从 CDN 加载，第一次打开需要联网 🌐
+- Three.js 从 CDN 加载，Rough.js 也从 CDN 加载，第一次打开需要联网 🌐
 - 用了不少现代 CSS 特效，手机上也能看 📱
 
 ## 👀 咋看？

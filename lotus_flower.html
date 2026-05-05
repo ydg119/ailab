@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>荷花绽放 - Rough.js</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #canvas {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas" width="800" height="800"></canvas>
+
+    <script src="https://cdn.jsdelivr.net/npm/roughjs@4.5.2/bundled/rough.js"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const rc = rough.canvas(canvas);
+
+        // 绘制荷叶（带独立的茎）
+        function drawLotusLeaf(stemX, leafX, leafY, rotation) {
+            // 荷叶的茎
+            rc.line(stemX, 700, leafX, leafY, {
+                stroke: '#2d5016',
+                strokeWidth: 6,
+                roughness: 1.5
+            });
+
+            // 荷叶
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.translate(leafX, leafY);
+            ctx.rotate(rotation * Math.PI / 180);
+
+            rc.ellipse(0, 0, 150, 80, {
+                fill: '#4a7c59',
+                fillStyle: 'solid',
+                stroke: '#2d5016',
+                strokeWidth: 2,
+                roughness: 1.2
+            });
+
+            rc.line(-75, 0, 75, 0, {
+                stroke: '#2d5016',
+                strokeWidth: 2
+            });
+
+            ctx.restore();
+        }
+
+        // 绘制两片荷叶（独立的茎）
+        drawLotusLeaf(300, 250, 550, -20);
+        drawLotusLeaf(500, 550, 580, 15);
+
+        // 绘制荷花的主茎
+        rc.line(400, 700, 400, 400, {
+            stroke: '#2d5016',
+            strokeWidth: 8,
+            roughness: 1.5
+        });
+
+        // 在主茎上添加小刺
+        for (let i = 0; i < 12; i++) {
+            const y = 700 - i * 25;
+            const offset = (i % 2 === 0) ? -5 : 5;
+            const thornLength = 8 + Math.random() * 4;
+
+            rc.line(400 + offset, y, 400 + offset + (offset > 0 ? thornLength : -thornLength), y - 5, {
+                stroke: '#2d5016',
+                strokeWidth: 2,
+                roughness: 2
+            });
+        }
+
+        // 绘制花骨朵的茎
+        rc.line(600, 700, 620, 480, {
+            stroke: '#2d5016',
+            strokeWidth: 6,
+            roughness: 1.5
+        });
+
+        // 在花骨朵茎上添加小刺
+        for (let i = 0; i < 8; i++) {
+            const t = i / 8;
+            const x = 600 + (620 - 600) * t;
+            const y = 700 - (700 - 480) * t;
+            const offset = (i % 2 === 0) ? -4 : 4;
+            const thornLength = 6 + Math.random() * 3;
+
+            rc.line(x + offset, y, x + offset + (offset > 0 ? thornLength : -thornLength), y - 4, {
+                stroke: '#2d5016',
+                strokeWidth: 1.5,
+                roughness: 2
+            });
+        }
+
+        // 绘制花骨朵（含苞待放）
+        const ctx = canvas.getContext('2d');
+        ctx.save();
+        ctx.translate(620, 480);
+
+        // 外层绿色花萼
+        rc.ellipse(0, 0, 45, 70, {
+            fill: '#5a8a4a',
+            fillStyle: 'solid',
+            stroke: '#2d5016',
+            strokeWidth: 2,
+            roughness: 1.3
+        });
+
+        // 内层粉色花瓣（微微露出）
+        rc.ellipse(0, -5, 35, 55, {
+            fill: '#ffb3d9',
+            fillStyle: 'solid',
+            stroke: '#e91e63',
+            strokeWidth: 1.5,
+            roughness: 1.2
+        });
+
+        // 顶部尖端
+        rc.ellipse(0, -30, 20, 25, {
+            fill: '#4a7c3a',
+            fillStyle: 'solid',
+            stroke: '#2d5016',
+            strokeWidth: 1.5,
+            roughness: 1.5
+        });
+
+        ctx.restore();
+
+        // 绘制花瓣（多层）
+        function drawPetal(x, y, width, height, rotation, color) {
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation * Math.PI / 180);
+
+            rc.ellipse(0, -height/2, width, height, {
+                fill: color,
+                fillStyle: 'solid',
+                stroke: '#e91e63',
+                strokeWidth: 2,
+                roughness: 1.5
+            });
+
+            ctx.restore();
+        }
+
+        // 外层花瓣（8片）
+        const outerPetals = 8;
+        for (let i = 0; i < outerPetals; i++) {
+            const angle = (360 / outerPetals) * i;
+            drawPetal(400, 350, 80, 140, angle, '#ffc1e3');
+        }
+
+        // 中层花瓣（8片，稍小）
+        for (let i = 0; i < outerPetals; i++) {
+            const angle = (360 / outerPetals) * i + 22.5;
+            drawPetal(400, 350, 70, 110, angle, '#ffb3d9');
+        }
+
+        // 内层花瓣（6片，更小）
+        const innerPetals = 6;
+        for (let i = 0; i < innerPetals; i++) {
+            const angle = (360 / innerPetals) * i;
+            drawPetal(400, 350, 50, 80, angle, '#ff99cc');
+        }
+
+        // 绘制花蕊中心
+        rc.circle(400, 350, 60, {
+            fill: '#ffd700',
+            fillStyle: 'solid',
+            stroke: '#ff8c00',
+            strokeWidth: 2,
+            roughness: 1.2
+        });
+
+        // 绘制花蕊细节（小圆点）
+        for (let i = 0; i < 15; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * 20;
+            const x = 400 + Math.cos(angle) * radius;
+            const y = 350 + Math.sin(angle) * radius;
+
+            rc.circle(x, y, 4, {
+                fill: '#ff8c00',
+                fillStyle: 'solid',
+                stroke: '#ff8c00',
+                strokeWidth: 1
+            });
+        }
+    </script>
+</body>
+</html>

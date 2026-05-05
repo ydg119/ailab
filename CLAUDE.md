@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # 项目概述
 
-这是一个 AI 生成的静态网站项目集合，包含 9 个独立的 HTML 页面，展示了交互式应用、动画效果和教程内容。所有文件均为自包含的单文件应用（HTML + CSS + JS 都在一个文件中）。
+这是一个 AI 生成的静态网站项目集合，包含 11 个独立的 HTML 页面，展示了交互式应用、动画效果、手绘风格图片和教程内容。所有文件均为自包含的单文件应用（HTML + CSS + JS 都在一个文件中）。
 
 ## 项目结构
 
@@ -20,7 +20,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ├── plugin_registry_gateway.html                # 插件注册网关界面
 ├── codex_workflow_tutorial.html               # Codex 工作流程教程
 ├── frontend_10_years_frontend_tutorial.html   # 前端框架发展教程（最近10年）
-└── frontend_tech_roadmap.html                 # 前端技术栈发展路径图 (2016-2026)
+├── frontend_tech_roadmap.html                 # 前端技术栈发展路径图 (2016-2026)
+├── lotus_flower.html                          # 荷花绽放（Rough.js 手绘）
+└── prototype_sketch.html                      # 产品原型草图（Rough.js 手绘）
 ```
 
 ## 页面分类
@@ -40,6 +42,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **photography-portfolio.html** - 摄影作品展示
 - **plugin_registry_gateway.html** - 插件注册界面
 
+### 手绘页面
+- **lotus_flower.html** - 荷花绽放（Rough.js 手绘风格）
+  - 技术栈: Rough.js (v4.5.2) 从 cdn.jsdelivr.net 加载
+  - 核心功能: 多层花瓣绽放动画、含苞待放花骨朵、荷叶与茎刺
+  - 特效: 手绘粗糙度控制（roughness 参数）
+  - 交互: 纯静态画布渲染，无交互
+
+- **prototype_sketch.html** - 产品原型草图（Rough.js 手绘风格）
+  - 技术栈: Rough.js (v4.5.2) 从 cdn.jsdelivr.net 加载
+
 ### 教程页面
 所有教程页面使用统一的设计风格：现代深色主题、渐变背景、玻璃态效果（backdrop-filter）
 
@@ -51,7 +63,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **纯静态**: 无构建流程，无依赖管理，无 package.json
 - **自包含文件**: 每个 HTML 文件包含所有 CSS 和 JavaScript，完全独立
-- **外部依赖**: 仅 index.html 依赖 Three.js (v0.160.0)，通过 unpkg.com CDN 加载
+- **外部依赖**: index.html 依赖 Three.js (v0.160.0)，通过 unpkg.com CDN 加载；lotus_flower.html 和 prototype_sketch.html 依赖 Rough.js (v4.5.2)，通过 cdn.jsdelivr.net CDN 加载
 - **现代浏览器特性**: ES6 模块、WebGL、CSS 变量、backdrop-filter
 - **响应式设计**: 所有页面支持移动端和触摸操作
 
@@ -72,6 +84,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 重要约束
 
 1. **Three.js 版本锁定**: index.html 使用 v0.160.0，升级需测试兼容性
-2. **首次加载需联网**: Three.js 从 CDN 加载
-3. **浏览器要求**: 需支持 ES6 模块和 WebGL
-4. **AI 生成内容**: 所有文件由 AI 生成，仅供学习研究使用
+2. **Rough.js 版本锁定**: lotus_flower.html 和 prototype_sketch.html 使用 v4.5.2，升级需测试兼容性
+3. **首次加载需联网**: Three.js 和 Rough.js 均从 CDN 加载
+4. **浏览器要求**: 需支持 ES6 模块和 WebGL
+5. **AI 生成内容**: 所有文件由 AI 生成，仅供学习研究使用

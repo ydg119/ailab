@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>产品原型展示 - 手绘风格</title>
+    <script src="https://cdn.jsdelivr.net/npm/roughjs@4.5.2/bundled/rough.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .main-title {
+            text-align: center;
+            color: white;
+            font-size: 36px;
+            margin-bottom: 40px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 35px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-label {
+            position: absolute;
+            top: -15px;
+            left: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        h2 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 8px;
+            margin-top: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 25px;
+            font-size: 13px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #555;
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 13px;
+            background: #f9f9f9;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #fff;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: scale(1.02);
+        }
+
+        .link {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .divider {
+            text-align: center;
+            margin: 15px 0;
+            color: #999;
+            font-size: 11px;
+        }
+
+        .profile-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .avatar-container {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 15px;
+            position: relative;
+        }
+
+        .avatar {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 4px solid #667eea;
+        }
+
+        .profile-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .profile-email {
+            color: #666;
+            font-size: 13px;
+        }
+
+        .profile-info {
+            background: #f9f9f9;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .info-value {
+            color: #333;
+            font-weight: 500;
+            font-size: 12px;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            margin-top: 10px;
+        }
+
+        .sketch-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .content-wrapper {
+            position: relative;
+            z-index: 2;
+        }
+
+        @media (max-width: 768px) {
+            .cards-container {
+                grid-template-columns: 1fr;
+            }
+
+            .main-title {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1 class="main-title">🎨 产品原型展示</h1>
+
+    <div class="cards-container">
+        <!-- Login Card -->
+        <div class="card">
+            <div class="card-label">登录页面</div>
+            <canvas class="sketch-canvas" id="loginCanvas"></canvas>
+            <div class="content-wrapper">
+                <h2>欢迎回来</h2>
+                <p class="subtitle">登录您的账户继续使用</p>
+
+                <div class="form-group">
+                    <label>用户名或邮箱</label>
+                    <input type="text" placeholder="请输入用户名或邮箱">
+                </div>
+
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" placeholder="请输入密码">
+                </div>
+
+                <button class="btn btn-primary">登录</button>
+
+                <div class="link">
+                    <a href="#">忘记密码？</a>
+                </div>
+
+                <div class="divider">或</div>
+
+                <div class="link">
+                    还没有账户？<a href="#">立即注册</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Register Card -->
+        <div class="card">
+            <div class="card-label">注册页面</div>
+            <canvas class="sketch-canvas" id="registerCanvas"></canvas>
+            <div class="content-wrapper">
+                <h2>创建账户</h2>
+                <p class="subtitle">加入我们，开始您的旅程</p>
+
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" placeholder="请输入用户名">
+                </div>
+
+                <div class="form-group">
+                    <label>邮箱</label>
+                    <input type="email" placeholder="请输入邮箱地址">
+                </div>
+
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" placeholder="请输入密码">
+                </div>
+
+                <div class="form-group">
+                    <label>确认密码</label>
+                    <input type="password" placeholder="请再次输入密码">
+                </div>
+
+                <button class="btn btn-primary">注册</button>
+
+                <div class="link">
+                    已有账户？<a href="#">立即登录</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reset Password Card -->
+        <div class="card">
+            <div class="card-label">密码重置</div>
+            <canvas class="sketch-canvas" id="resetCanvas"></canvas>
+            <div class="content-wrapper">
+                <h2>重置密码</h2>
+                <p class="subtitle">我们将向您的邮箱发送重置链接</p>
+
+                <div class="form-group">
+                    <label>邮箱地址</label>
+                    <input type="email" placeholder="请输入注册时使用的邮箱">
+                </div>
+
+                <button class="btn btn-primary">发送重置链接</button>
+
+                <div class="link">
+                    <a href="#">返回登录</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Card -->
+        <div class="card">
+            <div class="card-label">我的页面</div>
+            <canvas class="sketch-canvas" id="profileCanvas"></canvas>
+            <div class="content-wrapper">
+                <div class="profile-header">
+                    <div class="avatar-container">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Avatar" class="avatar">
+                    </div>
+                    <div class="profile-name">张小明</div>
+                    <div class="profile-email">zhangxiaoming@example.com</div>
+                </div>
+
+                <div class="profile-info">
+                    <div class="info-item">
+                        <span class="info-label">用户名</span>
+                        <span class="info-value">zhangxm</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">注册时间</span>
+                        <span class="info-value">2024-01-15</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">会员等级</span>
+                        <span class="info-value">高级会员</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">个人简介</span>
+                        <span class="info-value">热爱生活，热爱代码</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary">编辑资料</button>
+                <button class="btn btn-secondary">退出登录</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function drawSketches() {
+            const cards = document.querySelectorAll('.card');
+
+            cards.forEach(card => {
+                const canvas = card.querySelector('.sketch-canvas');
+                if (!canvas) return;
+
+                canvas.width = card.offsetWidth;
+                canvas.height = card.offsetHeight;
+
+                const rc = rough.canvas(canvas);
+
+                // Draw input sketches
+                const inputs = card.querySelectorAll('input');
+                inputs.forEach(input => {
+                    const rect = input.getBoundingClientRect();
+                    const cardRect = card.getBoundingClientRect();
+                    const x = rect.left - cardRect.left;
+                    const y = rect.top - cardRect.top;
+
+                    rc.rectangle(x - 2, y - 2, rect.width + 4, rect.height + 4, {
+                        stroke: '#667eea',
+                        strokeWidth: 1,
+                        roughness: 1.5,
+                        fill: 'rgba(102, 126, 234, 0.05)',
+                        fillStyle: 'solid'
+                    });
+                });
+
+                // Draw button sketch
+                const button = card.querySelector('.btn-primary');
+                if (button) {
+                    const rect = button.getBoundingClientRect();
+                    const cardRect = card.getBoundingClientRect();
+                    const x = rect.left - cardRect.left;
+                    const y = rect.top - cardRect.top;
+
+                    rc.rectangle(x - 3, y - 3, rect.width + 6, rect.height + 6, {
+                        stroke: '#764ba2',
+                        strokeWidth: 2,
+                        roughness: 1.2
+                    });
+                }
+
+                // Draw avatar circle for profile card
+                const avatar = card.querySelector('.avatar');
+                if (avatar) {
+                    const rect = avatar.getBoundingClientRect();
+                    const cardRect = card.getBoundingClientRect();
+                    const centerX = rect.left - cardRect.left + rect.width / 2;
+                    const centerY = rect.top - cardRect.top + rect.height / 2;
+
+                    rc.circle(centerX, centerY, rect.width + 8, {
+                        stroke: '#667eea',
+                        strokeWidth: 2,
+                        roughness: 1.5
+                    });
+                }
+
+                // Draw decorative stars
+                for (let i = 0; i < 3; i++) {
+                    const x = 30 + i * (canvas.width - 60) / 2;
+                    const y = 20 + Math.random() * 30;
+                    drawStar(rc, x, y, 12);
+                }
+            });
+        }
+
+        function drawStar(rc, x, y, size) {
+            const points = [];
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+                const r = i % 2 === 0 ? size : size / 2;
+                points.push([x + r * Math.cos(angle), y + r * Math.sin(angle)]);
+            }
+
+            rc.polygon(points, {
+                stroke: '#ffd700',
+                strokeWidth: 1.5,
+                roughness: 1.5,
+                fill: 'rgba(255, 215, 0, 0.2)',
+                fillStyle: 'solid'
+            });
+        }
+
+        window.addEventListener('load', drawSketches);
+        window.addEventListener('resize', drawSketches);
+    </script>
+</body>
+</html>
